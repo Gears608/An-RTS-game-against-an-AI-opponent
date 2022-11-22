@@ -2,23 +2,12 @@ using UnityEngine;
 
 public class tracker : MonoBehaviour
 {
-    public Transform trackedObject;
-    public float updateSpeed = 3f;
-    public Vector2 trackingOffset;
-    private Vector3 offset;
-
-    private void Start()
-    {
-        offset = (Vector3)trackingOffset;
-        offset.z = transform.position.z - trackedObject.position.z;
-    }
+    [SerializeField] //serialized to allow assignment in the editor
+    private Transform trackerObject; // initializes the variable which holds the tracker which the camera must follow
+    private float speed = 20f; // initalizes the variable which holds the speed at which the camera should move
 
     void LateUpdate()
     {
-        Vector3 newPos = transform.position;
-        newPos.x = trackedObject.position.x;
-        newPos.z = trackedObject.position.z;
-        newPos.y = trackedObject.position.y;
-        transform.position = Vector3.Lerp(transform.position, newPos, updateSpeed * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, trackerObject.position, speed * Time.deltaTime);  //moves the camera to the position of the tracker over time
     }
 }
