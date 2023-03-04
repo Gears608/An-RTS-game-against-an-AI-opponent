@@ -20,21 +20,25 @@ public class cameraController : MonoBehaviour
         if (Input.GetKey("w") || Input.mousePosition.y >= Screen.height - cameraBoarderWidth)  //requirements for moving up
         {
             movement.y += cameraSpeed;  //increases the movement in the y axis
+            movement.x += cameraSpeed; //increases the movement in the x axis
         }
 
         if (Input.GetKey("s") || Input.mousePosition.y <= cameraBoarderWidth) //requirements for moving down
         {
             movement.y -= cameraSpeed; //decreases the movement in the y axis
+            movement.x -= cameraSpeed; //decreases the movement in the x axis
         }
 
         if (Input.GetKey("a") || Input.mousePosition.x <= cameraBoarderWidth) //requirements for moving left
         {
             movement.x -= cameraSpeed; //decreases the movement in the x axis
+            movement.y += cameraSpeed;  //increases the movement in the y axis
         }
 
         if (Input.GetKey("d") || Input.mousePosition.x >= Screen.width - cameraBoarderWidth) //requirements for moving right
         {
             movement.x += cameraSpeed; //increases the movement in the x axis
+            movement.y -= cameraSpeed; //decreases the movement in the y axis
         }
 
         transform.Translate(movement * Time.deltaTime);  //moves the tracker to the new position
