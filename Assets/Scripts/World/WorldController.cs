@@ -242,6 +242,12 @@ public class WorldController : MonoBehaviour
 
         //creates a temporary destination node
         Component destinationComponent = components.GetObject(Mathf.FloorToInt(destination.x / componentWidth), Mathf.FloorToInt(destination.y / componentHeight));
+
+        if(destinationComponent == null)
+        {
+            return null;
+        }
+
         TileMap<int> integrationField = CreateIntegrationField(destinationComponent, destination);
         HierarchicalNode tempDestinationNode = new HierarchicalNode(Mathf.FloorToInt(destination.x), Mathf.FloorToInt(destination.y), destinationComponent);
         destinationComponent.AddNode(tempDestinationNode);

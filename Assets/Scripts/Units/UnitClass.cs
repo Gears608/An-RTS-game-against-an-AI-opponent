@@ -5,26 +5,49 @@ using UnityEditor;
 
 public class UnitClass : MonoBehaviour
 {
-    public float movementSpeed;
-
     public WorldController worldController;
 
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileMap<Vector2> currentFlowField;
 
-    private Rigidbody2D rb;
+    public Rigidbody2D rb;
 
     public bool floworint = false;
 
+    public Vector2 destination;
+
+    public Seperation seperation;
+    public Flock flock;
+
+    public float maxForce = 5;
+    public float maxSpeed = 4;
+
+    [SerializeField]
+    private bool moving;
+
+    public float seperationRadius = 3;
+    public float radius = 0.5f;
+
     private void Start()
     {
+        moving = false;
         hierarchicalPath = new Stack<HierarchicalNode>();
         rb = GetComponent<Rigidbody2D>();
-
     }
 
-    public void SetPath(List<HierarchicalNode> hierarchicalPath)
+    public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
     {
+        this.destination = destination;
+        moving = true;
+        if(this.flock == null)
+        {
+            this.flock = flock;
+        }
+        else if(this.flock != flock)
+        {
+            this.flock.RemoveUnit(this);
+            this.flock = flock;
+        }
         this.hierarchicalPath.Clear();
         currentFlowField = null;
 
@@ -39,6 +62,8 @@ public class UnitClass : MonoBehaviour
         }
         else
         {
+            n = hierarchicalPath[hierarchicalPath.Count-1];
+            destination = new Vector2(n.x, n.y);
             for (int i = 0; i < hierarchicalPath.Count - 1; i = i + 2)
             {
                 this.hierarchicalPath.Push(hierarchicalPath[i]);
@@ -54,8 +79,46 @@ public class UnitClass : MonoBehaviour
     public void FixedUpdate()
     {
         CheckPath();
-        //transform.Translate(FlowFieldSteering()*movementSpeed*Time.deltaTime);
-        rb.velocity = FlowFieldSteering().normalized*movementSpeed;
+        
+        Vector2 flowSteer = FlowFieldSteering();
+        Vector2 cohesionSteer = new Vector2();
+        Vector2 alignmentSteer = new Vector2();
+        Vector2 seperationSteer = seperation.GetSeperation();
+
+        if (moving)
+        {
+            if (flock != null)
+            {
+                cohesionSteer = SeekingSteering(flock.CohesionSteering(this));
+                alignmentSteer = Steer(flock.AlignmentSteering(this));
+            }
+
+        }
+
+        Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
+        Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer * 0.05f, Color.yellow);
+        Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer * 0.3f, Color.green);
+        Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer * 1.2f, Color.black);
+
+        Vector2 velocity = flowSteer + (cohesionSteer * 0.05f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
+        //Debug.Log(flowSteer + ", "+ cohesionSteer + ", "+ alignmentSteer + ", " + seperationSteer);
+
+        if (velocity.magnitude > maxForce)
+        {
+            velocity = velocity.normalized * maxForce;
+        }
+
+        //velocity += rb.velocity;
+
+        if(velocity.magnitude > maxSpeed)
+        {
+            velocity = velocity * (maxForce / velocity.magnitude);
+        }
+
+        Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
+
+        rb.AddForce(velocity, ForceMode2D.Force);
+        Debug.Log(rb.velocity.magnitude);
     }
 
     private void CheckPath()
@@ -81,21 +144,21 @@ public class UnitClass : MonoBehaviour
                 else
                 {
                     //recalculate the path
-
-                    //we can change this to calculate a merging a* onto the original path
-
+                    List<HierarchicalNode> remainingPath = new List<HierarchicalNode>(hierarchicalPath);
                     while (hierarchicalPath.Count > 1)
                     {
                         hierarchicalPath.Pop();
                     }
                     HierarchicalNode n = hierarchicalPath.Peek();
-                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, new Vector2(n.x, n.y), new List<HierarchicalNode>(hierarchicalPath)));
+                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, new Vector2(n.x, n.y), remainingPath), flock, destination);
                 }
             }
         }
     }
 
-    private Vector2 FlowFieldSteering()
+
+    //returns a 
+    public Vector2 FlowFieldSteering()
     {
         //movement
         if (currentFlowField != null)
@@ -105,34 +168,75 @@ public class UnitClass : MonoBehaviour
             {
                 //recalculate the path
 
-                //we can change this to calculate a merging a* onto the original path
-
                 while (hierarchicalPath.Count > 1)
                 {
                     hierarchicalPath.Pop();
                 }
                 HierarchicalNode n = hierarchicalPath.Peek();
-                SetPath(worldController.FindHierarchicalPath(transform.position, new Vector2(n.x, n.y)));
+                SetPath(worldController.FindHierarchicalPath(transform.position, new Vector2(n.x, n.y)),flock, destination);
             }
             else
             {
                 //move the unit
-                Vector2 flow = currentFlowField.GetObject(transform.position);
+                Vector2Int index = currentFlowField.GetIndexFromWorldPosition(transform.position);
+                Vector2 flow = currentFlowField.GetObject(index.x, index.y);
+                /*
+                flow += currentFlowField.GetObject(index.x+1, index.y);
+                flow += currentFlowField.GetObject(index.x+1, index.y+1);
+                flow += currentFlowField.GetObject(index.x+1, index.y-1);
+                flow += currentFlowField.GetObject(index.x-1, index.y);
+                flow += currentFlowField.GetObject(index.x-1, index.y+1);
+                flow += currentFlowField.GetObject(index.x-1, index.y-1);
+                flow += currentFlowField.GetObject(index.x, index.y+1);
+                flow += currentFlowField.GetObject(index.x, index.y-1);
+
+                flow /= 9;
+                */
+
                 if (flow == new Vector2(2, 2))
                 {
-                    //Debug.Log("Destination Reached.");
-                    hierarchicalPath.Pop();
-                    currentFlowField = null;
+                    //if the unit has reached its destination
+                    //moving = false;
+                    //flock.RemoveUnit(this);
+                    //flock = null;
+                    //hierarchicalPath.Pop();
+                    //currentFlowField = null;
                     return Vector2.zero;
                 }
                 else
                 {
-                    return flow;
+                    flow.Normalize();
+                    return Steer(flow);
                 }
             }
         }
 
         return Vector2.zero;
+    }
+
+    /*
+     * a function to get the force to be applied to the unit to grant the change in velocity required to steer the object towards the given destination
+     * 
+     * Vector2 destination - the point to be seeked
+     * 
+     */
+    private Vector2 SeekingSteering(Vector2 destination)
+    {
+        Vector2 seekForce = destination - (Vector2)transform.position;
+        if (seekForce.magnitude == 0)
+        {
+            return Vector2.zero;
+        }
+        seekForce *= maxSpeed / seekForce.magnitude;
+        seekForce -= rb.velocity;
+        return seekForce * (maxForce / maxSpeed);
+    }
+
+    private Vector2 Steer(Vector2 direction)
+    {
+        Vector2 velocity = direction * maxSpeed;
+        velocity -= rb.velocity;
+        return velocity * (maxForce / maxSpeed);
     }
 
     private void OnDrawGizmosSelected()

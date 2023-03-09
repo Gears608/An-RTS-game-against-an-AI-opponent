@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 
 
-public class playerClass : MonoBehaviour
+public class PlayerClass : MonoBehaviour
 {
 
     Camera playerCam; // initialises a variable to hold the camera
@@ -57,7 +57,7 @@ public class playerClass : MonoBehaviour
         {
             foreach(GameObject unit in selectedUnits)
             {
-                unit.transform.GetComponent<SpriteRenderer>().color = Color.green;
+                unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
             }
             selectedUnits.Clear();
             
@@ -70,7 +70,7 @@ public class playerClass : MonoBehaviour
             Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
             foreach(Collider2D box in unitsInArea)
             {
-                box.transform.GetComponent<SpriteRenderer>().color = Color.red;
+                box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
                 selectedUnits.Add(box.gameObject);
             }
             selectionBox.gameObject.SetActive(false);
@@ -97,6 +97,12 @@ public class playerClass : MonoBehaviour
         selectionBox.sizeDelta = new Vector2(Mathf.Abs(width), Mathf.Abs(height));
     }
 
+    void removeSelectedUnit(GameObject unit)
+    {
+        unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
+        selectedUnits.Remove(unit);
+    }
+
     /*
      * 
      *  Pathfinding Functions
@@ -105,11 +111,52 @@ public class playerClass : MonoBehaviour
 
     private void FindPaths()
     {
-        List<HierarchicalNode> path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, GetMousePositionInWorld());
-        selectedUnits[0].GetComponent<UnitClass>().SetPath(path);
-        for (int i = 1; i < selectedUnits.Count; i++)
+        GameObject flockController = new GameObject("Flock");
+        Flock flock = flockController.AddComponent<Flock>();
+        List<HierarchicalNode> path = null;
+        Vector2 mousePos = GetMousePositionInWorld();
+
+        while (path == null && selectedUnits.Count > 0)
         {
-            selectedUnits[i].GetComponent<UnitClass>().SetPath(worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, GetMousePositionInWorld(), path));
+            Debug.Log(path);
+            Debug.Log(selectedUnits.Count);
+            path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, mousePos);
+
+            if(path == null)
+            {
+                removeSelectedUnit(selectedUnits[0]);
+            }
+            else
+            {
+                selectedUnits[0].GetComponent<UnitClass>().SetPath(path, flock, mousePos);
+                for (int i = 1; i < selectedUnits.Count; i++)
+                {
+                    List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, mousePos, path);
+                    if (mergingPath == null)
+                    {
+                        removeSelectedUnit(selectedUnits[i]);
+                    }
+                    else
+                    {
+                        selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
+                    }
+                }
+            }
+        }
+
+        List<UnitClass> units = new List<UnitClass>();
+        foreach (GameObject unit in selectedUnits)
+        {
+            units.Add(unit.GetComponent<UnitClass>());
+        }
+
+        if (units.Count > 0)
+        {
+            flockController.GetComponent<Flock>().flock = units;
+        }
+        else
+        {
+            Destroy(flockController);
         }
     }
 }
