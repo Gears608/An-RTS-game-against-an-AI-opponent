@@ -1376,9 +1376,9 @@ MonoBehaviour:
   componentWidth: 10
   componentHeight: 10
   displayCost: 0
-  showportals: 0
-  showComponents: 0
-  showGrid: 0
+  showportals: 1
+  showComponents: 1
+  showGrid: 1
   maxCachedComponents: 0
 --- !u!1 &610214257
 GameObject:
@@ -4121,10 +4121,6 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 8884702013839080555, guid: 78c2987e3fb576346a169784c82f2326, type: 3}
-      propertyPath: maxForce
-      value: 5
-      objectReference: {fileID: 0}
     - target: {fileID: 8884702013839080555, guid: 78c2987e3fb576346a169784c82f2326, type: 3}
       propertyPath: maxSpeed
       value: 4

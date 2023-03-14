@@ -118,8 +118,6 @@ public class PlayerClass : MonoBehaviour
 
         while (path == null && selectedUnits.Count > 0)
         {
-            Debug.Log(path);
-            Debug.Log(selectedUnits.Count);
             path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, mousePos);
 
             if(path == null)
@@ -138,6 +136,7 @@ public class PlayerClass : MonoBehaviour
                     }
                     else
                     {
+                        Debug.Log(mergingPath.Count);
                         selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
                     }
                 }

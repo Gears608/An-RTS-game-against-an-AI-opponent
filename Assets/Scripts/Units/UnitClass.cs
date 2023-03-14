@@ -118,7 +118,6 @@ public class UnitClass : MonoBehaviour
         Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
 
         rb.AddForce(velocity, ForceMode2D.Force);
-        Debug.Log(rb.velocity.magnitude);
     }
 
     private void CheckPath()

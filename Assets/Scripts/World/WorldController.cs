@@ -109,7 +109,6 @@ public class WorldController : MonoBehaviour
         int endY = component.y + componentHeight;
         for (int y = startY; y < endY; y++)
         {
-            //Debug.Log("Checking Node: " + x + ", " + y);
             Node currentNode = tileMap.GetObject(x, y);
             Node neighbourNode = tileMap.GetObject(x + xModifier, y);
             if (currentNode.cost < 255 && neighbourNode.cost < 255)
@@ -119,7 +118,6 @@ public class WorldController : MonoBehaviour
             else if(length > 0)
             {
                 int midPoint = y - length + Mathf.FloorToInt((y - (y-length))/2);
-                //Debug.Log("New Node; Length: " + length + " Position: " + x + ", " + midPoint);
                 HierarchicalNode newHNode = new HierarchicalNode(x,midPoint, component);
                 HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.tileArray[component.indexX + xModifier, component.indexY]);
 
@@ -135,7 +133,6 @@ public class WorldController : MonoBehaviour
         if (length > 0)
         {
             int midPoint = endY - length + Mathf.FloorToInt((endY - (endY - length)) / 2);
-            //Debug.Log("New Node; Length: " + length + " Position: " + x + ", " + midPoint);
             HierarchicalNode newHNode = new HierarchicalNode(x, midPoint, component);
             HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.tileArray[component.indexX + xModifier, component.indexY]);
 
@@ -144,9 +141,6 @@ public class WorldController : MonoBehaviour
 
             component.AddNode(newHNode);
             components.tileArray[component.indexX + xModifier, component.indexY].AddNode(neighbourHNode);
-
-            //Debug.Log("Node placed at: "+newHNode.x+", "+newHNode.y);
-            //Debug.Log("Node placed at: "+neighbourHNode.x+", "+neighbourHNode.y);
         }
     }
 
@@ -158,7 +152,6 @@ public class WorldController : MonoBehaviour
         int endX = component.x + componentWidth;
         for (int x = startX; x < endX; x++)
         {
-            //Debug.Log("Checking Node: "+x+", "+y);
             Node currentNode = tileMap.GetObject(x, y);
             Node neighbourNode = tileMap.GetObject(x, y + yModifier);
             if (currentNode.cost < 255 && neighbourNode.cost < 255)
@@ -348,28 +341,20 @@ public class WorldController : MonoBehaviour
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
 
-        //creates a temporary destination node
-        Component destinationComponent = components.GetObject(Mathf.FloorToInt(destination.x / componentWidth), Mathf.FloorToInt(destination.y / componentHeight));
-        TileMap<int> integrationField = CreateIntegrationField(destinationComponent, destination);
-        HierarchicalNode tempDestinationNode = new HierarchicalNode(Mathf.FloorToInt(destination.x), Mathf.FloorToInt(destination.y), destinationComponent);
-        destinationComponent.AddNode(tempDestinationNode);
-
-        //adds the destination node to the node graph
-        foreach (HierarchicalNode node in destinationComponent.portalNodes)
-        {
-            int weight = integrationField.GetObject(node.x - destinationComponent.x, node.y - destinationComponent.y);
-            if (weight != -1)
-            {
-                node.connectedNodes.Add(tempDestinationNode, weight);
-            }
-        }
-
         //finds the nodes accessible to the unit
         Component startComponent = components.tileArray[Mathf.FloorToInt(startPos.x / componentWidth), Mathf.FloorToInt(startPos.y / componentHeight)];
-        integrationField = CreateIntegrationField(startComponent, startPos);
+        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
 
         foreach (HierarchicalNode node in startComponent.portalNodes)
         {
+            if (path.Contains(node))
+            {
+                List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(node));
+                output.Add(node);
+
+                return output;
+            }
+
             int weight = integrationField.GetObject(node.x - startComponent.x, node.y - startComponent.y);
             if (weight != -1)
             {
@@ -396,31 +381,12 @@ public class WorldController : MonoBehaviour
             //the merging bit
             if (path.Contains(currentNode))
             {
-                List<HierarchicalNode> output = path.GetRange(0, path.Count - path.IndexOf(currentNode));
+                List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
                 while (currentNode.previousNode != null)
                 {
                     currentNode = currentNode.previousNode;
                     output.Add(currentNode);
                 }
-
-                //removes the temporary destination node
-                destinationComponent.RemoveNode(tempDestinationNode);
-
-                return output;
-            }
-
-            if (currentNode == tempDestinationNode)
-            {
-                List<HierarchicalNode> output = new List<HierarchicalNode>();
-                output.Add(currentNode);
-                while (currentNode.previousNode != null)
-                {
-                    currentNode = currentNode.previousNode;
-                    output.Add(currentNode);
-                }
-
-                //removes the temporary destination node
-                destinationComponent.RemoveNode(tempDestinationNode);
 
                 return output;
             }
@@ -452,10 +418,6 @@ public class WorldController : MonoBehaviour
             openList.Remove(currentNode);
             closedList.Add(currentNode);
         }
-
-        //removes the temporary destination node
-        destinationComponent.RemoveNode(tempDestinationNode);
-
 
         return null;
     }
@@ -590,13 +552,13 @@ public class WorldController : MonoBehaviour
         Component component = components.GetObject(source);
         if(!cachedFlowfields.ContainsKey((component, destination)))
         {
-            Debug.Log("Generating new field");
+            //Debug.Log("Generating new field");
             TileMap<int> intField = CreateIntegrationField(component, destination);
             cachedFlowfields.Add((component, destination), CreateFlowField(intField, component));
         }
         else
         {
-            Debug.Log("Found field");
+            //Debug.Log("Found field");
         }
         return cachedFlowfields[(component, destination)];
     }
