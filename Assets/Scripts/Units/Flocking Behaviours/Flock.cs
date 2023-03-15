@@ -47,8 +47,6 @@ public class Flock : MonoBehaviour
 
         midpoint /= nearbyCount;
 
-        //Debug.Log(midpoint);
-
         //returns the midpoint
         return midpoint;
     }

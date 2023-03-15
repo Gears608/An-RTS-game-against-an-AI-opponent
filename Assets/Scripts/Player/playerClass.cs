@@ -118,8 +118,18 @@ public class PlayerClass : MonoBehaviour
 
         while (path == null && selectedUnits.Count > 0)
         {
-            path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, mousePos);
+            HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
 
+            //if destination is unreachable
+            if (destinationNode == null) 
+            {
+                selectedUnits.Clear();
+                continue;
+            }
+
+            path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
+
+            //if no path is found
             if(path == null)
             {
                 removeSelectedUnit(selectedUnits[0]);
@@ -127,19 +137,22 @@ public class PlayerClass : MonoBehaviour
             else
             {
                 selectedUnits[0].GetComponent<UnitClass>().SetPath(path, flock, mousePos);
+
                 for (int i = 1; i < selectedUnits.Count; i++)
                 {
-                    List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, mousePos, path);
+                    List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
                     if (mergingPath == null)
                     {
                         removeSelectedUnit(selectedUnits[i]);
                     }
                     else
                     {
-                        Debug.Log(mergingPath.Count);
+                        //Debug.Log(mergingPath.Count);
                         selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
                     }
                 }
+
+                worldController.RemoveNodeFromGraph(destinationNode);
             }
         }
 

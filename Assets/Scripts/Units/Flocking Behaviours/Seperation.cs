@@ -40,12 +40,28 @@ public class Seperation : MonoBehaviour
         }
     }
 
+    public void AlertNeighbours(Flock flock)
+    {
+        foreach(UnitClass unit in nearbyUnits)
+        {
+            if(unit.flock == flock && unit.moving == true)
+            {
+                unit.StopMoving();
+            }
+        }
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if(collision.tag == "PlayerUnit")
         {
             //adds nearby units to the list
-            nearbyUnits.Add(collision.gameObject.GetComponent<UnitClass>());
+            UnitClass unit = collision.gameObject.GetComponent<UnitClass>();
+            nearbyUnits.Add(unit);
+            if (unit.flock == thisUnit.flock && unit.moving == false)
+            {
+                unit.StopMoving();
+            }
         }
     }
 

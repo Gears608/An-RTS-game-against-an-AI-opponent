@@ -22,8 +22,7 @@ public class UnitClass : MonoBehaviour
     public float maxForce = 5;
     public float maxSpeed = 4;
 
-    [SerializeField]
-    private bool moving;
+    public bool moving;
 
     public float seperationRadius = 3;
     public float radius = 0.5f;
@@ -35,8 +34,22 @@ public class UnitClass : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
     }
 
+    public void StopMoving()
+    {
+        //Debug.Log(gameObject.name + " stopped moving");
+        moving = false;
+        rb.AddForce(-rb.velocity*maxForce);
+        currentFlowField = null;
+        hierarchicalPath.Clear();
+        seperation.AlertNeighbours(flock);
+    }
+
     public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
     {
+        if (Selection.Contains(gameObject))
+        {
+            Debug.Log("New Path Set.");
+        }
         this.destination = destination;
         moving = true;
         if(this.flock == null)
@@ -51,8 +64,18 @@ public class UnitClass : MonoBehaviour
         this.hierarchicalPath.Clear();
         currentFlowField = null;
 
-        HierarchicalNode n;
+        this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
+        if (this.hierarchicalPath.Count % 2 == 0)
+        {
+            this.hierarchicalPath.Pop();
+        }
+        currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
 
+        //currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(Mathf.FloorToInt(destination.x), Mathf.FloorToInt(destination.y)));
+
+        //HierarchicalNode n;
+
+        /*
         if (hierarchicalPath.Count == 1)
         {
             //generate first flowfield
@@ -63,7 +86,6 @@ public class UnitClass : MonoBehaviour
         else
         {
             n = hierarchicalPath[hierarchicalPath.Count-1];
-            destination = new Vector2(n.x, n.y);
             for (int i = 0; i < hierarchicalPath.Count - 1; i = i + 2)
             {
                 this.hierarchicalPath.Push(hierarchicalPath[i]);
@@ -73,6 +95,7 @@ public class UnitClass : MonoBehaviour
             n = this.hierarchicalPath.Peek();
             currentFlowField = worldController.GetFlowField(transform.position, new Vector2(n.x, n.y));
         }
+        */
     }
 
 
@@ -80,28 +103,33 @@ public class UnitClass : MonoBehaviour
     {
         CheckPath();
         
-        Vector2 flowSteer = FlowFieldSteering();
+        Vector2 flowSteer = new Vector2();
         Vector2 cohesionSteer = new Vector2();
         Vector2 alignmentSteer = new Vector2();
-        Vector2 seperationSteer = seperation.GetSeperation();
+        Vector2 seperationSteer = new Vector2(); ;
 
         if (moving)
         {
+            flowSteer = FlowFieldSteering();
             if (flock != null)
             {
                 cohesionSteer = SeekingSteering(flock.CohesionSteering(this));
                 alignmentSteer = Steer(flock.AlignmentSteering(this));
             }
-
+            seperationSteer = seperation.GetSeperation();
+        }
+        else
+        {
+            seperationSteer = seperation.GetSeperation() * 0.05f;
         }
 
-        Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
-        Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer * 0.05f, Color.yellow);
-        Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer * 0.3f, Color.green);
-        Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer * 1.2f, Color.black);
+
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer * 0.05f, Color.yellow);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer * 0.3f, Color.green);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer * 1.2f, Color.black);
 
         Vector2 velocity = flowSteer + (cohesionSteer * 0.05f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
-        //Debug.Log(flowSteer + ", "+ cohesionSteer + ", "+ alignmentSteer + ", " + seperationSteer);
 
         if (velocity.magnitude > maxForce)
         {
@@ -115,7 +143,7 @@ public class UnitClass : MonoBehaviour
             velocity = velocity * (maxForce / velocity.magnitude);
         }
 
-        Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
 
         rb.AddForce(velocity, ForceMode2D.Force);
     }
@@ -132,24 +160,25 @@ public class UnitClass : MonoBehaviour
                 if (worldController.components.GetObject(transform.position) == hierarchicalPath.Peek().component)
                 {
                     //generate the next path
-                    if (hierarchicalPath.Count > 1)
+                    if (hierarchicalPath.Count > 2)
                     {
+                        hierarchicalPath.Pop();
                         hierarchicalPath.Pop();
                     }
                     HierarchicalNode n = hierarchicalPath.Peek();
-                    currentFlowField = worldController.GetFlowField(transform.position, new Vector2(n.x, n.y));
+                    currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(n.x, n.y));
                 }
                 //if the unit has been pushed onto an incorrect tile
                 else
                 {
-                    //recalculate the path
-                    List<HierarchicalNode> remainingPath = new List<HierarchicalNode>(hierarchicalPath);
-                    while (hierarchicalPath.Count > 1)
+                    if (Selection.Contains(gameObject))
                     {
-                        hierarchicalPath.Pop();
+                        Debug.Log("Pushed off flowfield.");
                     }
-                    HierarchicalNode n = hierarchicalPath.Peek();
-                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, new Vector2(n.x, n.y), remainingPath), flock, destination);
+                    //recalculate the path
+                    List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
+                    currentPath.Reverse();
+                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), flock, destination);
                 }
             }
         }
@@ -165,41 +194,25 @@ public class UnitClass : MonoBehaviour
             //if the unit is on the correct component but is in an inaccessible sector
             if (currentFlowField.GetObject(transform.position) == default(Vector2))
             {
-                //recalculate the path
-
-                while (hierarchicalPath.Count > 1)
+                if (Selection.Contains(gameObject))
                 {
-                    hierarchicalPath.Pop();
+                    Debug.Log("Inaccessable zone.");
                 }
-                HierarchicalNode n = hierarchicalPath.Peek();
-                SetPath(worldController.FindHierarchicalPath(transform.position, new Vector2(n.x, n.y)),flock, destination);
+                //recalculate the path
+                List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
+                currentPath.Reverse();
+                SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), flock, destination);
             }
             else
             {
                 //move the unit
                 Vector2Int index = currentFlowField.GetIndexFromWorldPosition(transform.position);
                 Vector2 flow = currentFlowField.GetObject(index.x, index.y);
-                /*
-                flow += currentFlowField.GetObject(index.x+1, index.y);
-                flow += currentFlowField.GetObject(index.x+1, index.y+1);
-                flow += currentFlowField.GetObject(index.x+1, index.y-1);
-                flow += currentFlowField.GetObject(index.x-1, index.y);
-                flow += currentFlowField.GetObject(index.x-1, index.y+1);
-                flow += currentFlowField.GetObject(index.x-1, index.y-1);
-                flow += currentFlowField.GetObject(index.x, index.y+1);
-                flow += currentFlowField.GetObject(index.x, index.y-1);
 
-                flow /= 9;
-                */
-
-                if (flow == new Vector2(2, 2))
+                if (flow == new Vector2(2, 2) && hierarchicalPath.Count == 1)
                 {
                     //if the unit has reached its destination
-                    //moving = false;
-                    //flock.RemoveUnit(this);
-                    //flock = null;
-                    //hierarchicalPath.Pop();
-                    //currentFlowField = null;
+                    StopMoving();
                     return Vector2.zero;
                 }
                 else
@@ -281,9 +294,9 @@ public class UnitClass : MonoBehaviour
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
-                        Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
-                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
+                        //Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
+                        //Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
+                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

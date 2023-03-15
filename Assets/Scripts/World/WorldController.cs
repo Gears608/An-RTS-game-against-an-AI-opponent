@@ -19,7 +19,7 @@ public class WorldController : MonoBehaviour
     private int terrainMask;
 
 
-    private Dictionary<(Component, Vector2), TileMap<Vector2>> cachedFlowfields;
+    private Dictionary<(Component, Vector2Int), TileMap<Vector2>> cachedFlowfields;
 
     public bool displayCost = false;
     public bool showportals = false;
@@ -34,7 +34,7 @@ public class WorldController : MonoBehaviour
         terrainMask = LayerMask.GetMask("Impassable");
 
         components = new TileMap<Component>(width, height, componentWidth, Vector2.zero);
-        cachedFlowfields = new Dictionary<(Component, Vector2), TileMap<Vector2>>();
+        cachedFlowfields = new Dictionary<(Component, Vector2Int), TileMap<Vector2>>();
 
         Debug.Log("Generating World...");
         for (int x = 0; x < width; x++)
@@ -219,6 +219,38 @@ public class WorldController : MonoBehaviour
     }
 
 
+    public HierarchicalNode AddNodeToGraph(Vector2 position)
+    {
+        Component component = components.GetObject(position);
+
+        if (component == null)
+        {
+            return null;
+        }
+
+        TileMap<int> integrationField = CreateIntegrationField(component, position);
+        HierarchicalNode newNode = new HierarchicalNode(Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.y), component);
+        component.AddNode(newNode);
+
+        foreach (HierarchicalNode node in component.portalNodes)
+        {
+            int weight = integrationField.GetObject(node.x - component.x, node.y - component.y);
+            if (weight != -1)
+            {
+                node.connectedNodes.Add(newNode, weight);
+            }
+        }
+
+        return newNode;
+    }
+
+    public void RemoveNodeFromGraph(HierarchicalNode node)
+    {
+        Component component = components.GetObject(new Vector2(node.x, node.y));
+        component.RemoveNode(node);
+    }
+
+
     /*
      * 
      *  Pathfinding Methods
@@ -227,37 +259,17 @@ public class WorldController : MonoBehaviour
 
 
     // a function to find a high level path between 2 points
-    public List<HierarchicalNode> FindHierarchicalPath(Vector2 startPos, Vector2 destination)
+    public List<HierarchicalNode> FindHierarchicalPath(Vector2 startPos, HierarchicalNode destinationNode)
     {
         //an open and closed list to hold the nodes to be searched
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
 
-        //creates a temporary destination node
-        Component destinationComponent = components.GetObject(Mathf.FloorToInt(destination.x / componentWidth), Mathf.FloorToInt(destination.y / componentHeight));
-
-        if(destinationComponent == null)
-        {
-            return null;
-        }
-
-        TileMap<int> integrationField = CreateIntegrationField(destinationComponent, destination);
-        HierarchicalNode tempDestinationNode = new HierarchicalNode(Mathf.FloorToInt(destination.x), Mathf.FloorToInt(destination.y), destinationComponent);
-        destinationComponent.AddNode(tempDestinationNode);
-
-        //adds the destination node to the node graph
-        foreach (HierarchicalNode node in destinationComponent.portalNodes)
-        {
-            int weight = integrationField.GetObject(node.x - destinationComponent.x, node.y - destinationComponent.y);
-            if (weight != -1)
-            {
-                node.connectedNodes.Add(tempDestinationNode, weight);
-            }
-        }
+        Vector2 destinationPosition = new Vector2(destinationNode.x, destinationNode.y);
 
         //finds the nodes accessible to the unit
-        Component startComponent = components.tileArray[Mathf.FloorToInt(startPos.x / componentWidth), Mathf.FloorToInt(startPos.y / componentHeight)];
-        integrationField = CreateIntegrationField(startComponent, startPos);
+        Component startComponent = components.GetObject(startPos);
+        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
 
         foreach (HierarchicalNode node in startComponent.portalNodes)
         {
@@ -265,7 +277,7 @@ public class WorldController : MonoBehaviour
             if (weight != -1)
             {
                 node.g = weight;
-                node.h = CalculateH(new Vector2(node.x, node.y), destination);
+                node.h = CalculateH(new Vector2(node.x, node.y), destinationPosition);
                 node.CalculateF();
                 node.previousNode = null;
                 openList.Add(node);
@@ -284,7 +296,7 @@ public class WorldController : MonoBehaviour
                 }
             }
 
-            if(currentNode == tempDestinationNode)
+            if(currentNode == destinationNode)
             {
                 List<HierarchicalNode> output = new List<HierarchicalNode>();
                 output.Add(currentNode);
@@ -293,9 +305,6 @@ public class WorldController : MonoBehaviour
                     currentNode = currentNode.previousNode;
                     output.Add(currentNode);
                 }
-
-                //removes the temporary destination node
-                destinationComponent.RemoveNode(tempDestinationNode);
 
                 return output;
             }
@@ -316,7 +325,7 @@ public class WorldController : MonoBehaviour
                     else
                     {
                         neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
-                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destination);
+                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destinationPosition);
                         neighbour.CalculateF();
                         neighbour.previousNode = currentNode;
                         openList.Add(neighbour);
@@ -328,38 +337,39 @@ public class WorldController : MonoBehaviour
             closedList.Add(currentNode);
         }
 
-        //removes the temporary destination node
-        destinationComponent.RemoveNode(tempDestinationNode);
-
-
         return null;
     }
 
-    public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, Vector2 destination, List<HierarchicalNode> path)
+    public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, HierarchicalNode destinationNode, List<HierarchicalNode> path)
     {
+
+        //finds the nodes accessible to the unit
+        Component startComponent = components.GetObject(startPos);
+
+        if (path[0].component == startComponent)
+        {
+            return path;
+        }
+
+        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
         //an open and closed list to hold the nodes to be searched
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
 
-        //finds the nodes accessible to the unit
-        Component startComponent = components.tileArray[Mathf.FloorToInt(startPos.x / componentWidth), Mathf.FloorToInt(startPos.y / componentHeight)];
-        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
+        Vector2 destinationPosition = new Vector2(destinationNode.x, destinationNode.y);
 
         foreach (HierarchicalNode node in startComponent.portalNodes)
         {
             if (path.Contains(node))
             {
-                List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(node));
-                output.Add(node);
-
-                return output;
+                return path;
             }
 
             int weight = integrationField.GetObject(node.x - startComponent.x, node.y - startComponent.y);
             if (weight != -1)
             {
                 node.g = weight;
-                node.h = CalculateH(new Vector2(node.x, node.y), destination);
+                node.h = CalculateH(new Vector2(node.x, node.y), destinationPosition);
                 node.CalculateF();
                 node.previousNode = null;
                 openList.Add(node);
@@ -407,7 +417,112 @@ public class WorldController : MonoBehaviour
                     else
                     {
                         neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
-                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destination);
+                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destinationPosition);
+                        neighbour.CalculateF();
+                        neighbour.previousNode = currentNode;
+                        openList.Add(neighbour);
+                    }
+                }
+            }
+
+            openList.Remove(currentNode);
+            closedList.Add(currentNode);
+        }
+
+        return null;
+    }
+
+    public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, Vector2 destinationPosition, List<HierarchicalNode> path)
+    {
+
+        //finds the nodes accessible to the unit
+        Component startComponent = components.GetObject(startPos);
+
+        if (path[0].component == startComponent)
+        {
+            return path;
+        }
+
+        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
+        //an open and closed list to hold the nodes to be searched
+        List<HierarchicalNode> openList = new List<HierarchicalNode>();
+        List<HierarchicalNode> closedList = new List<HierarchicalNode>();
+
+        HierarchicalNode destinationNode = AddNodeToGraph(destinationPosition);
+
+        foreach (HierarchicalNode node in startComponent.portalNodes)
+        {
+            if (path.Contains(node))
+            {
+                return path.GetRange(0, path.IndexOf(node)); ;
+            }
+
+            int weight = integrationField.GetObject(node.x - startComponent.x, node.y - startComponent.y);
+            if (weight != -1)
+            {
+                node.g = weight;
+                node.h = CalculateH(new Vector2(node.x, node.y), destinationPosition);
+                node.CalculateF();
+                node.previousNode = null;
+                openList.Add(node);
+            }
+        }
+
+        while (openList.Count > 0)
+        {
+            //select the node with the lowest f value
+            HierarchicalNode currentNode = openList[0];
+            foreach (HierarchicalNode node in openList)
+            {
+                if (node.f < currentNode.f)
+                {
+                    currentNode = node;
+                }
+            }
+
+            //the merging bit
+            if (path.Contains(currentNode))
+            {
+                List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
+                while (currentNode.previousNode != null)
+                {
+                    currentNode = currentNode.previousNode;
+                    output.Add(currentNode);
+                }
+
+                return output;
+            }
+
+            //if destination node is reached without merging then return the path anyway
+            if(currentNode == destinationNode)
+            {
+                List<HierarchicalNode> output = new List<HierarchicalNode>();
+                while (currentNode.previousNode != null)
+                {
+                    currentNode = currentNode.previousNode;
+                    output.Add(currentNode);
+                }
+
+                return output;
+            }
+
+            foreach (HierarchicalNode neighbour in currentNode.connectedNodes.Keys)
+            {
+                if (!closedList.Contains(neighbour))
+                {
+                    if (openList.Contains(neighbour))
+                    {
+                        if (neighbour.g > currentNode.g + currentNode.connectedNodes[neighbour])
+                        {
+                            neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
+                            neighbour.CalculateF();
+                            neighbour.previousNode = currentNode;
+                        }
+                    }
+                    else
+                    {
+                        neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
+                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destinationPosition);
                         neighbour.CalculateF();
                         neighbour.previousNode = currentNode;
                         openList.Add(neighbour);
@@ -547,7 +662,7 @@ public class WorldController : MonoBehaviour
         return flowField;
     }
 
-    public TileMap<Vector2> GetFlowField(Vector3 source, Vector2 destination)
+    public TileMap<Vector2> GetFlowField(Vector3 source, Vector2Int destination)
     {
         Component component = components.GetObject(source);
         if(!cachedFlowfields.ContainsKey((component, destination)))
