@@ -252,19 +252,19 @@ public class UnitClass : MonoBehaviour
 
                 if (reverse.Count > 0)
                 {
-                    Gizmos.DrawCube(new Vector3(reverse.Peek().x, reverse.Peek().y, -1) + Vector3.one / 2, Vector2.one);
+                    Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight, -1) + Vector3.one / 2, Vector2.one);
                     while (reverse.Count > 1)
                     {
                         HierarchicalNode n = reverse.Pop();
-                        Gizmos.DrawLine(new Vector2(n.x, n.y) + Vector2.one / 2, new Vector2(reverse.Peek().x, reverse.Peek().y) + Vector2.one / 2);
-                        Gizmos.DrawCube(new Vector3(reverse.Peek().x, reverse.Peek().y, -1) + Vector3.one / 2, Vector2.one);
+                        Gizmos.DrawLine(new Vector2(n.x * worldController.cellWidth, n.y * worldController.cellHeight) + Vector2.one / 2, new Vector2(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight) + Vector2.one / 2);
+                        Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight, -1) + Vector3.one / 2, Vector2.one);
 
                         hierarchicalPath.Push(n);
                     }
                     hierarchicalPath.Push(reverse.Pop());
                 }
 
-                Gizmos.DrawLine((Vector2)transform.position + Vector2.one / 2, new Vector2(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y) + Vector2.one / 2);
+                Gizmos.DrawLine((Vector2)transform.position + Vector2.one / 2, new Vector2(hierarchicalPath.Peek().x * worldController.cellWidth, hierarchicalPath.Peek().y * worldController.cellHeight) + Vector2.one / 2);
             }
         }
         if (currentFlowField != null) 
@@ -276,25 +276,12 @@ public class UnitClass : MonoBehaviour
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        //Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
-                        //Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
+                        Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
+                        Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
                         //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }
-            /*
-            else
-            {
-                for (int x = 0; x < currentIntegrationField.GetTileWidth(); x++)
-                {
-                    for (int y = 0; y < currentIntegrationField.GetTileHeight(); y++)
-                    {
-                        //integration
-                        Handles.Label(currentIntegrationField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, currentIntegrationField.GetObject(x, y).ToString(), style);
-                    }
-                }
-            }
-            */
         }
     }
 

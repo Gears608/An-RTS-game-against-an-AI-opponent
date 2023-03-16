@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class Node
 {
+    //index of the node
     public int x;
     public int y;
 
+    //cost of the node
     public int cost;
 
     public Node(int x, int y, int cost)

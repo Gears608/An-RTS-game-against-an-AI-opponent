@@ -5,16 +5,18 @@ public class TileGrid<TTileType>
 {
     private int width;
     private int height;
-    private float cellSize;
+    private float cellHeight;
+    private float cellWidth;
     private Vector2 startPosition;
     public TTileType[,] tileArray;
 
     //constructor for a tile object
-    public TileGrid(int width, int height, float cellSize, Vector2 startPosition)
+    public TileGrid(int width, int height, float cellHeight, float cellWidth, Vector2 startPosition)
     {
         this.width = width;
         this.height = height;
-        this.cellSize = cellSize;
+        this.cellWidth = cellWidth;
+        this.cellHeight = cellHeight;
         this.startPosition = startPosition;
 
         tileArray = new TTileType[width, height];
@@ -23,15 +25,15 @@ public class TileGrid<TTileType>
     //gets the world position of a given index
     public Vector2 GetWorldPositionFromIndex(int x, int y) 
     {
-        return new Vector2(x, y) * cellSize + startPosition;
+        return new Vector2(x * cellWidth, y * cellHeight) + startPosition;
     }
 
     //returns a vector2int containing the index within the grid from a given world position
     public Vector2Int GetIndexFromWorldPosition(Vector3 worldPosition)
     {
         Vector2Int output = new Vector2Int();
-        output.x = Mathf.FloorToInt((worldPosition.x - startPosition.x) / cellSize);
-        output.y = Mathf.FloorToInt((worldPosition.y - startPosition.y) / cellSize);
+        output.x = Mathf.FloorToInt((worldPosition.x - startPosition.x) / cellWidth);
+        output.y = Mathf.FloorToInt((worldPosition.y - startPosition.y) / cellHeight);
         return output;
     }
 
@@ -96,7 +98,7 @@ public class TileGrid<TTileType>
 
         if(x > 0)
         {
-            neighbours.Add(new Vector2Int(x -1, y));
+            neighbours.Add(new Vector2Int(x - 1, y));
             if(y > 0)
             {
                 neighbours.Add(new Vector2Int(x - 1, y - 1));
@@ -163,7 +165,7 @@ public class TileGrid<TTileType>
     public List<Vector2Int> GetNeighbours(int x, int y, TTileType ignore)
     {
         List<Vector2Int> neighbours = new List<Vector2Int>();
-        //Debug.Log("Checking: "+x +", "+y);
+
         bool up = IsValid(x, y + 1, ignore);
         bool down = IsValid(x, y - 1, ignore);
         bool left = IsValid(x - 1, y, ignore);
