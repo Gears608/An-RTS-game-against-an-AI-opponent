@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class TileMap<TTileType>
+public class TileGrid<TTileType>
 {
     private int width;
     private int height;
@@ -10,7 +10,7 @@ public class TileMap<TTileType>
     public TTileType[,] tileArray;
 
     //constructor for a tile object
-    public TileMap(int width, int height, float cellSize, Vector2 startPosition)
+    public TileGrid(int width, int height, float cellSize, Vector2 startPosition)
     {
         this.width = width;
         this.height = height;

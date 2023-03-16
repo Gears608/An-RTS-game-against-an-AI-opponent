@@ -8,7 +8,7 @@ public class UnitClass : MonoBehaviour
     public WorldController worldController;
 
     private Stack<HierarchicalNode> hierarchicalPath;
-    private TileMap<Vector2> currentFlowField;
+    private TileGrid<Vector2> currentFlowField;
 
     public Rigidbody2D rb;
 
@@ -65,37 +65,19 @@ public class UnitClass : MonoBehaviour
         currentFlowField = null;
 
         this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
-        if (this.hierarchicalPath.Count % 2 == 0)
+        if (this.hierarchicalPath.Count > 1)
         {
-            this.hierarchicalPath.Pop();
+            if (this.hierarchicalPath.Count % 2 == 0)
+            {
+                this.hierarchicalPath.Pop();
+            }
+            else
+            {
+                this.hierarchicalPath.Pop();
+                this.hierarchicalPath.Pop();
+            }
         }
         currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
-
-        //currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(Mathf.FloorToInt(destination.x), Mathf.FloorToInt(destination.y)));
-
-        //HierarchicalNode n;
-
-        /*
-        if (hierarchicalPath.Count == 1)
-        {
-            //generate first flowfield
-            this.hierarchicalPath.Push(hierarchicalPath[0]);
-            n = this.hierarchicalPath.Peek();
-            currentFlowField = worldController.GetFlowField(transform.position, new Vector2(n.x, n.y));
-        }
-        else
-        {
-            n = hierarchicalPath[hierarchicalPath.Count-1];
-            for (int i = 0; i < hierarchicalPath.Count - 1; i = i + 2)
-            {
-                this.hierarchicalPath.Push(hierarchicalPath[i]);
-            }
-
-            //generate first flowfield
-            n = this.hierarchicalPath.Peek();
-            currentFlowField = worldController.GetFlowField(transform.position, new Vector2(n.x, n.y));
-        }
-        */
     }
 
 
@@ -296,7 +278,7 @@ public class UnitClass : MonoBehaviour
                         //flow
                         //Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
                         //Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
-                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
+                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

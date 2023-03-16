@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class PlayerClass : MonoBehaviour
 {
+    enum Modes { Building, Managing, Interacting }
+
+    Modes mode;
 
     Camera playerCam; // initialises a variable to hold the camera
     [SerializeField]
@@ -19,6 +22,7 @@ public class PlayerClass : MonoBehaviour
     void Start()
     {
         playerCam = Camera.main;  // gets the main camera
+        mode = Modes.Managing;
     }
 
 
@@ -49,37 +53,49 @@ public class PlayerClass : MonoBehaviour
     // for selecting and deselecting units
     private void UnitSelection()
     {
-        Vector3 mousePos = GetMousePositionInWorld();
-        Debug.DrawRay(transform.position, mousePos - transform.position, Color.blue);
-
-        // on mouse down
-        if (Input.GetMouseButtonDown(0))
+        switch (mode)
         {
-            foreach(GameObject unit in selectedUnits)
-            {
-                unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
-            }
-            selectedUnits.Clear();
-            
-            selectionBoxStartPos = mousePos;
-        }
+            //player in unit management mode
+            case Modes.Managing:
 
-        // on mouse up
-        if (Input.GetMouseButtonUp(0))
-        {
-            Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
-            foreach(Collider2D box in unitsInArea)
-            {
-                box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
-                selectedUnits.Add(box.gameObject);
-            }
-            selectionBox.gameObject.SetActive(false);
-        }
+                Vector3 mousePos = GetMousePositionInWorld();
 
-        // while mouse held down
-        if (Input.GetMouseButton(0))
-        {
-            selectionBoxUpdate(mousePos);
+                // on mouse down
+                if (Input.GetMouseButtonDown(0))
+                {
+                    foreach (GameObject unit in selectedUnits)
+                    {
+                        unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
+                    }
+                    selectedUnits.Clear();
+
+                    selectionBoxStartPos = mousePos;
+                    break;
+                }
+
+                // on mouse up
+                if (Input.GetMouseButtonUp(0))
+                {
+                    Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
+                    foreach (Collider2D box in unitsInArea)
+                    {
+                        box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
+                        selectedUnits.Add(box.gameObject);
+                    }
+                    selectionBox.gameObject.SetActive(false);
+                    break;
+                }
+
+                // while mouse held down
+                if (Input.GetMouseButton(0))
+                {
+                    selectionBoxUpdate(mousePos);
+                    break;
+                }
+
+                break;
+            //player in building mode
+            //case Modes.Building:
         }
     }
 

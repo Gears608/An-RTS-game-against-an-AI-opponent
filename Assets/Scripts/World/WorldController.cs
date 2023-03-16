@@ -5,13 +5,13 @@ using UnityEngine;
 
 public class WorldController : MonoBehaviour
 {
-    public TileMap<Node> tileMap;
+    public TileGrid<Node> tileMap;
     public int width;
     public int height;
     public int cellSize;
     public Vector3 startPos;
 
-    public TileMap<Component> components;
+    public TileGrid<Component> components;
 
     public int componentWidth;
     public int componentHeight;
@@ -19,7 +19,7 @@ public class WorldController : MonoBehaviour
     private int terrainMask;
 
 
-    private Dictionary<(Component, Vector2Int), TileMap<Vector2>> cachedFlowfields;
+    private Dictionary<(Component, Vector2Int), TileGrid<Vector2>> cachedFlowfields;
 
     public bool displayCost = false;
     public bool showportals = false;
@@ -30,11 +30,11 @@ public class WorldController : MonoBehaviour
 
     private void Start()
     {
-        tileMap = new TileMap<Node>(width * componentWidth, height * componentHeight, cellSize, startPos);
+        tileMap = new TileGrid<Node>(width * componentWidth, height * componentHeight, cellSize, startPos);
         terrainMask = LayerMask.GetMask("Impassable");
 
-        components = new TileMap<Component>(width, height, componentWidth, Vector2.zero);
-        cachedFlowfields = new Dictionary<(Component, Vector2Int), TileMap<Vector2>>();
+        components = new TileGrid<Component>(width, height, componentWidth, Vector2.zero);
+        cachedFlowfields = new Dictionary<(Component, Vector2Int), TileGrid<Vector2>>();
 
         Debug.Log("Generating World...");
         for (int x = 0; x < width; x++)
@@ -51,7 +51,7 @@ public class WorldController : MonoBehaviour
                 }
                 components.SetObject(x, y, new Component(x*componentWidth, y*componentHeight, x, y));
                 //sets whether nodes are walkable or not
-                UpdateComponent(components.tileArray[x, y]);
+                UpdateComponent(components.GetObject(x, y));
             }
         }
 
@@ -95,7 +95,9 @@ public class WorldController : MonoBehaviour
             {
                 if (Physics2D.OverlapBox(new Vector2(x,y) + new Vector2(cellSize, cellSize)/2, new Vector2(cellSize - 0.1f, cellSize - 0.1f), 0, terrainMask, -1f, 1f) != null)
                 {
-                    tileMap.tileArray[x, y].cost = 255;
+                    Node currNode = tileMap.GetObject(x, y);
+                    currNode.cost = 255;
+                    tileMap.SetObject(x, y, currNode);
                 }
             }
         }
@@ -119,13 +121,13 @@ public class WorldController : MonoBehaviour
             {
                 int midPoint = y - length + Mathf.FloorToInt((y - (y-length))/2);
                 HierarchicalNode newHNode = new HierarchicalNode(x,midPoint, component);
-                HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.tileArray[component.indexX + xModifier, component.indexY]);
+                HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.GetObject(component.indexX + xModifier, component.indexY));
 
                 newHNode.AddNode(neighbourHNode, 1);
                 neighbourHNode.AddNode(newHNode, 1);
 
                 component.AddNode(newHNode);
-                components.tileArray[component.indexX + xModifier, component.indexY].AddNode(neighbourHNode);
+                components.GetObject(component.indexX + xModifier, component.indexY).AddNode(neighbourHNode);
 
                 length = 0;
             }
@@ -134,13 +136,13 @@ public class WorldController : MonoBehaviour
         {
             int midPoint = endY - length + Mathf.FloorToInt((endY - (endY - length)) / 2);
             HierarchicalNode newHNode = new HierarchicalNode(x, midPoint, component);
-            HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.tileArray[component.indexX + xModifier, component.indexY]);
+            HierarchicalNode neighbourHNode = new HierarchicalNode(x + xModifier, midPoint, components.GetObject(component.indexX + xModifier, component.indexY));
 
             newHNode.AddNode(neighbourHNode, 1);
             neighbourHNode.AddNode(newHNode, 1);
 
             component.AddNode(newHNode);
-            components.tileArray[component.indexX + xModifier, component.indexY].AddNode(neighbourHNode);
+            components.GetObject(component.indexX + xModifier, component.indexY).AddNode(neighbourHNode);
         }
     }
 
@@ -162,13 +164,13 @@ public class WorldController : MonoBehaviour
             {
                 int midPoint = x - length + Mathf.FloorToInt((x - (x - length)) / 2);
                 HierarchicalNode newHNode = new HierarchicalNode(midPoint, y, component);
-                HierarchicalNode neighbourHNode = new HierarchicalNode(midPoint, y + yModifier, components.tileArray[component.indexX, component.indexY + yModifier]);
+                HierarchicalNode neighbourHNode = new HierarchicalNode(midPoint, y + yModifier, components.GetObject(component.indexX, component.indexY + yModifier));
 
                 newHNode.AddNode(neighbourHNode, 1);
                 neighbourHNode.AddNode(newHNode, 1);
 
                 component.AddNode(newHNode);
-                components.tileArray[component.indexX, component.indexY + yModifier].AddNode(neighbourHNode);
+                components.GetObject(component.indexX, component.indexY + yModifier).AddNode(neighbourHNode);
                 length = 0;
             }
         }
@@ -176,13 +178,13 @@ public class WorldController : MonoBehaviour
         {
             int midPoint = endX - length + Mathf.FloorToInt((endX - (endX - length)) / 2);
             HierarchicalNode newHNode = new HierarchicalNode(midPoint, y, component);
-            HierarchicalNode neighbourHNode = new HierarchicalNode(midPoint, y + yModifier, components.tileArray[component.indexX, component.indexY + yModifier]);
+            HierarchicalNode neighbourHNode = new HierarchicalNode(midPoint, y + yModifier, components.GetObject(component.indexX, component.indexY + yModifier));
 
             newHNode.AddNode(neighbourHNode, 1);
             neighbourHNode.AddNode(newHNode, 1);
 
             component.AddNode(newHNode);
-            components.tileArray[component.indexX, component.indexY + yModifier].AddNode(neighbourHNode);
+            components.GetObject(component.indexX, component.indexY + yModifier).AddNode(neighbourHNode);
         }
     }
 
@@ -191,7 +193,7 @@ public class WorldController : MonoBehaviour
     {
         foreach(HierarchicalNode node in component.portalNodes)
         {
-            TileMap<int> integrationField = CreateIntegrationField(component, new Vector2(node.x, node.y));
+            TileGrid<int> integrationField = CreateIntegrationField(component, new Vector2(node.x, node.y));
 
             foreach(HierarchicalNode node_ in component.portalNodes)
             {
@@ -228,7 +230,7 @@ public class WorldController : MonoBehaviour
             return null;
         }
 
-        TileMap<int> integrationField = CreateIntegrationField(component, position);
+        TileGrid<int> integrationField = CreateIntegrationField(component, position);
         HierarchicalNode newNode = new HierarchicalNode(Mathf.FloorToInt(position.x), Mathf.FloorToInt(position.y), component);
         component.AddNode(newNode);
 
@@ -269,7 +271,7 @@ public class WorldController : MonoBehaviour
 
         //finds the nodes accessible to the unit
         Component startComponent = components.GetObject(startPos);
-        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
+        TileGrid<int> integrationField = CreateIntegrationField(startComponent, startPos);
 
         foreach (HierarchicalNode node in startComponent.portalNodes)
         {
@@ -351,7 +353,7 @@ public class WorldController : MonoBehaviour
             return path;
         }
 
-        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
+        TileGrid<int> integrationField = CreateIntegrationField(startComponent, startPos);
         //an open and closed list to hold the nodes to be searched
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
@@ -443,12 +445,10 @@ public class WorldController : MonoBehaviour
             return path;
         }
 
-        TileMap<int> integrationField = CreateIntegrationField(startComponent, startPos);
+        TileGrid<int> integrationField = CreateIntegrationField(startComponent, startPos);
         //an open and closed list to hold the nodes to be searched
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
-
-        HierarchicalNode destinationNode = AddNodeToGraph(destinationPosition);
 
         foreach (HierarchicalNode node in startComponent.portalNodes)
         {
@@ -467,6 +467,9 @@ public class WorldController : MonoBehaviour
                 openList.Add(node);
             }
         }
+
+        HierarchicalNode destinationNode = AddNodeToGraph(destinationPosition);
+        Debug.Log("Temp destination added");
 
         while (openList.Count > 0)
         {
@@ -490,6 +493,8 @@ public class WorldController : MonoBehaviour
                     output.Add(currentNode);
                 }
 
+                RemoveNodeFromGraph(destinationNode);
+                Debug.Log("Temp destination removed");
                 return output;
             }
 
@@ -497,12 +502,15 @@ public class WorldController : MonoBehaviour
             if(currentNode == destinationNode)
             {
                 List<HierarchicalNode> output = new List<HierarchicalNode>();
+                output.Add(currentNode);
                 while (currentNode.previousNode != null)
                 {
                     currentNode = currentNode.previousNode;
                     output.Add(currentNode);
                 }
 
+                RemoveNodeFromGraph(destinationNode);
+                Debug.Log("Temp destination removed");
                 return output;
             }
 
@@ -534,21 +542,23 @@ public class WorldController : MonoBehaviour
             closedList.Add(currentNode);
         }
 
+        RemoveNodeFromGraph(destinationNode);
+        Debug.Log("Temp destination removed");
         return null;
     }
 
     // a functtion to create an integration field
-    private TileMap<int> CreateIntegrationField(Component component, Vector2 destination)
+    private TileGrid<int> CreateIntegrationField(Component component, Vector2 destination)
     {
         //gets the component of the destination
-        Component destinationComponent = components.tileArray[Mathf.FloorToInt(destination.x / componentWidth), Mathf.FloorToInt(destination.y / componentHeight)];
+        Component destinationComponent = components.GetObject(destination);
 
         //sets the bounds for the integration field
         int minX = Mathf.Min(component.x, destinationComponent.x);
         int maxX = Mathf.Max(component.x, destinationComponent.x) + componentWidth;
         int minY = Mathf.Min(component.y, destinationComponent.y);
         int maxY = Mathf.Max(component.y, destinationComponent.y) + componentHeight;
-        TileMap<int> integrationField = new TileMap<int>(maxX-minX, maxY-minY, cellSize, new Vector3(minX, minY));
+        TileGrid<int> integrationField = new TileGrid<int>(maxX-minX, maxY-minY, cellSize, new Vector3(minX, minY));
 
         //initial value of -1 for all positions
         for (int x = 0; x < maxX-minX; x++)
@@ -617,12 +627,12 @@ public class WorldController : MonoBehaviour
         return integrationField;
     }
 
-    private TileMap<Vector2> CreateFlowField(TileMap<int> integrationField, Component source)
+    private TileGrid<Vector2> CreateFlowField(TileGrid<int> integrationField, Component source)
     {
         int width = integrationField.GetTileWidth();
         int height = integrationField.GetTileHeight();
 
-        TileMap<Vector2> flowField = new TileMap<Vector2>(width, height, cellSize, integrationField.GetStartPosition()); ;
+        TileGrid<Vector2> flowField = new TileGrid<Vector2>(width, height, cellSize, integrationField.GetStartPosition()); ;
 
         //loops over the source component
         for (int x = 0; x < width; x++)
@@ -662,13 +672,13 @@ public class WorldController : MonoBehaviour
         return flowField;
     }
 
-    public TileMap<Vector2> GetFlowField(Vector3 source, Vector2Int destination)
+    public TileGrid<Vector2> GetFlowField(Vector3 source, Vector2Int destination)
     {
         Component component = components.GetObject(source);
         if(!cachedFlowfields.ContainsKey((component, destination)))
         {
             //Debug.Log("Generating new field");
-            TileMap<int> intField = CreateIntegrationField(component, destination);
+            TileGrid<int> intField = CreateIntegrationField(component, destination);
             cachedFlowfields.Add((component, destination), CreateFlowField(intField, component));
         }
         else
