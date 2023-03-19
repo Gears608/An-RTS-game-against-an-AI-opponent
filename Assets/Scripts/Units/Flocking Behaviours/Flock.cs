@@ -7,8 +7,6 @@ public class Flock : MonoBehaviour
     public List<UnitClass> flock;
 
     [SerializeField]
-    private float cohesionMin = 0f;
-    [SerializeField]
     private int cohesionMax = 5;
 
     /*

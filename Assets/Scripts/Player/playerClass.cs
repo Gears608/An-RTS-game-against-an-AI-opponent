@@ -83,6 +83,15 @@ public class PlayerClass : MonoBehaviour
                         selectedUnits.Add(box.gameObject);
                     }
                     selectionBox.gameObject.SetActive(false);
+
+                    Debug.Log("Mouse Position: "+mousePos);
+                    if (Physics2D.OverlapCircleAll(mousePos, 0.2f, worldController.terrainMask, -1f, 1f).Length > 0)
+                    {
+                        Debug.Log("Collision Found. ");
+                    }
+                    //Debug.Log("Node: "+worldController.GetNode(mousePos).x+", "+ worldController.GetNode(mousePos).y);
+                    //Debug.Log("Component: " + worldController.GetComponent(mousePos).indexX + ", " + worldController.GetComponent(mousePos).indexY);
+
                     break;
                 }
 

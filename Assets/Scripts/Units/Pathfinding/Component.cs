@@ -4,15 +4,15 @@ using UnityEngine;
 
 public class Component
 {
-    public int x;
-    public int y;
+    public float x;
+    public float y;
 
     public int indexX;
     public int indexY;
 
     public List<HierarchicalNode> portalNodes;
 
-    public Component(int x, int y, int indexX, int indexY)
+    public Component(float x, float y, int indexX, int indexY)
     {
         this.x = x;
         this.y = y;

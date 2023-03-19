@@ -9,6 +9,9 @@ public class UnitClass : MonoBehaviour
 
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
+    
+    
+    private TileGrid<int> intField;
 
     public Rigidbody2D rb;
 
@@ -77,7 +80,7 @@ public class UnitClass : MonoBehaviour
                 this.hierarchicalPath.Pop();
             }
         }
-        currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
+        (currentFlowField, intField) = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
     }
 
 
@@ -88,7 +91,7 @@ public class UnitClass : MonoBehaviour
         Vector2 flowSteer = new Vector2();
         Vector2 cohesionSteer = new Vector2();
         Vector2 alignmentSteer = new Vector2();
-        Vector2 seperationSteer = new Vector2(); ;
+        Vector2 seperationSteer = new Vector2();
 
         if (moving)
         {
@@ -127,7 +130,7 @@ public class UnitClass : MonoBehaviour
 
         //Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
 
-        rb.AddForce(velocity, ForceMode2D.Force);
+        rb.AddForce(velocity * new Vector2(1, 0.5f), ForceMode2D.Force);
     }
 
     private void CheckPath()
@@ -148,7 +151,7 @@ public class UnitClass : MonoBehaviour
                         hierarchicalPath.Pop();
                     }
                     HierarchicalNode n = hierarchicalPath.Peek();
-                    currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(n.x, n.y));
+                    (currentFlowField, intField) = worldController.GetFlowField(transform.position, new Vector2Int(n.x, n.y));
                 }
                 //if the unit has been pushed onto an incorrect tile
                 else
@@ -174,6 +177,8 @@ public class UnitClass : MonoBehaviour
         if (currentFlowField != null)
         {
             //if the unit is on the correct component but is in an inaccessible sector
+            //Debug.Log(currentFlowField.GetIndexFromWorldPosition(transform.position));
+            //Debug.Log(currentFlowField.GetObject(transform.position));
             if (currentFlowField.GetObject(transform.position) == default(Vector2))
             {
                 if (Selection.Contains(gameObject))
@@ -252,19 +257,34 @@ public class UnitClass : MonoBehaviour
 
                 if (reverse.Count > 0)
                 {
-                    Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight, -1) + Vector3.one / 2, Vector2.one);
+                    //Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.tileSize, reverse.Peek().y * worldController.tileSize, -1) + Vector3.one / 2, Vector2.one);
+                    Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, worldController.tileSize/4f));
+                    Vector2 temp = worldController.tileMap.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                    Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
                     while (reverse.Count > 1)
                     {
                         HierarchicalNode n = reverse.Pop();
-                        Gizmos.DrawLine(new Vector2(n.x * worldController.cellWidth, n.y * worldController.cellHeight) + Vector2.one / 2, new Vector2(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight) + Vector2.one / 2);
-                        Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.cellWidth, reverse.Peek().y * worldController.cellHeight, -1) + Vector3.one / 2, Vector2.one);
+                        //Gizmos.DrawCube(new Vector3(reverse.Peek().x * worldController.tileSize, reverse.Peek().y * worldController.tileSize, -1) + Vector3.one / 2, Vector2.one);
+                        temp = worldController.tileMap.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                        Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
+
+                        Vector2 z = worldController.tileMap.GetWorldPositionFromIndex(n.x, n.y);
+                        Gizmos.DrawLine(z, temp);
 
                         hierarchicalPath.Push(n);
                     }
                     hierarchicalPath.Push(reverse.Pop());
                 }
 
-                Gizmos.DrawLine((Vector2)transform.position + Vector2.one / 2, new Vector2(hierarchicalPath.Peek().x * worldController.cellWidth, hierarchicalPath.Peek().y * worldController.cellHeight) + Vector2.one / 2);
+                Vector2 t = worldController.tileMap.GetWorldPositionFromIndex(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y);
+                Gizmos.DrawLine((Vector2)transform.position, t);
+                Gizmos.matrix = Matrix4x4.Translate(Vector2.zero);
             }
         }
         if (currentFlowField != null) 
@@ -276,9 +296,17 @@ public class UnitClass : MonoBehaviour
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x,y) + Vector2.one / 2, currentFlowField.GetWorldPositionFromIndex(x, y) + (Vector2)currentFlowField.GetObject(x,y)/2 + Vector2.one / 2);
-                        Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, Vector2.one/5);
-                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + Vector2.one / 2, ((Vector2)currentFlowField.GetObject(x, y)).ToString(), style);
+                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
+                    }
+                }
+            }
+            else
+            {
+                for (int x = 0; x < intField.GetTileWidth(); x++)
+                {
+                    for (int y = 0; y < intField.GetTileHeight(); y++)
+                    {
+                        Handles.Label(intField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize/4f), (intField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

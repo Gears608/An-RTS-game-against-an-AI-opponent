@@ -5,18 +5,18 @@ public class TileGrid<TTileType>
 {
     private int width;
     private int height;
-    private float cellHeight;
-    private float cellWidth;
+    private float tileHeight;
+    private float tileWidth;
     private Vector2 startPosition;
     public TTileType[,] tileArray;
 
     //constructor for a tile object
-    public TileGrid(int width, int height, float cellHeight, float cellWidth, Vector2 startPosition)
+    public TileGrid(int width, int height, float tileHeight, float tileWidth, Vector2 startPosition)
     {
         this.width = width;
         this.height = height;
-        this.cellWidth = cellWidth;
-        this.cellHeight = cellHeight;
+        this.tileWidth = tileWidth;
+        this.tileHeight = tileHeight;
         this.startPosition = startPosition;
 
         tileArray = new TTileType[width, height];
@@ -25,15 +25,23 @@ public class TileGrid<TTileType>
     //gets the world position of a given index
     public Vector2 GetWorldPositionFromIndex(int x, int y) 
     {
-        return new Vector2(x * cellWidth, y * cellHeight) + startPosition;
+        //return new Vector2(x * tileWidth, y * tileHeight) + startPosition;
+        return new Vector2(((x * tileWidth - y * tileHeight) / 2f), (x * tileWidth  + y * tileHeight) / 4f) + startPosition;
     }
 
     //returns a vector2int containing the index within the grid from a given world position
-    public Vector2Int GetIndexFromWorldPosition(Vector3 worldPosition)
+    public Vector2Int GetIndexFromWorldPosition(Vector2 worldPosition)
     {
-        Vector2Int output = new Vector2Int();
-        output.x = Mathf.FloorToInt((worldPosition.x - startPosition.x) / cellWidth);
-        output.y = Mathf.FloorToInt((worldPosition.y - startPosition.y) / cellHeight);
+        //Debug.Log("Checking: " + worldPosition);
+        //Debug.Log(worldPosition + " -= " + startPosition);
+        worldPosition -= startPosition;
+        //Debug.Log("Relative: " + worldPosition);
+        Vector2 x = new Vector2((2 * worldPosition.y + worldPosition.x), ((2 * worldPosition.y - worldPosition.x)));
+        //Debug.Log("Index: "+ x);
+        x = new Vector2(x.x / tileWidth, x.y / tileHeight);
+        //Debug.Log("Scaled: "+x);
+        Vector2Int output = new Vector2Int(Mathf.FloorToInt(x.x), Mathf.FloorToInt(x.y));
+        //Debug.Log(output);
         return output;
     }
 
