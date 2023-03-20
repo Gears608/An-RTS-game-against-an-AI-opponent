@@ -14,6 +14,8 @@ public class UnitClass : MonoBehaviour
     private TileGrid<int> intField;
 
     public Rigidbody2D rb;
+    [SerializeField]
+    private SpriteRenderer sprite;
 
     public bool floworint = false;
 
@@ -22,8 +24,8 @@ public class UnitClass : MonoBehaviour
     public Seperation seperation;
     public Flock flock;
 
-    public float maxForce = 5;
-    public float maxSpeed = 4;
+    public float maxForce;
+    public float maxSpeed;
 
     public bool moving;
 
@@ -41,7 +43,7 @@ public class UnitClass : MonoBehaviour
     {
         //Debug.Log(gameObject.name + " stopped moving");
         moving = false;
-        rb.AddForce(-rb.velocity*maxForce);
+        rb.velocity = Vector2.zero;
         currentFlowField = null;
         hierarchicalPath.Clear();
         seperation.AlertNeighbours(flock);
@@ -131,6 +133,14 @@ public class UnitClass : MonoBehaviour
         //Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
 
         rb.AddForce(velocity * new Vector2(1, 0.5f), ForceMode2D.Force);
+        if(rb.velocity.x > 0.1)
+        {
+            sprite.flipX = false;
+        }
+        else if (rb.velocity.x < -0.1f)
+        {
+            sprite.flipX = true;
+        }
     }
 
     private void CheckPath()
@@ -296,7 +306,7 @@ public class UnitClass : MonoBehaviour
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
+                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }
@@ -306,7 +316,7 @@ public class UnitClass : MonoBehaviour
                 {
                     for (int y = 0; y < intField.GetTileHeight(); y++)
                     {
-                        Handles.Label(intField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize/4f), (intField.GetObject(x, y)).ToString(), style);
+                        //Handles.Label(intField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize/4f), (intField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

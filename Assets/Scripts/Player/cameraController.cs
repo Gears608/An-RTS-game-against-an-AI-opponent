@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class cameraController : MonoBehaviour
+public class CameraController : MonoBehaviour
 {
     public float cameraSpeed = 20f;   //iniializes the variable which holds the speed which the tracker can move
     public float cameraBoarderWidth = 10f;  //initializes the variable which holds the size of the boarder round the screen which moves the player camera when the cursor enters

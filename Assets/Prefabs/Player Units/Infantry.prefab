@@ -70,11 +70,11 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 140014831
+  m_SortingLayer: -1
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 395f6b9556f14704790df6035be6ee3a, type: 3}
-  m_Color: {r: 0.05384469, g: 1, b: 0, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 4fb79b7519090374d89e69d8112d86c2, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -83,7 +83,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
-  m_SpriteSortPoint: 0
+  m_SpriteSortPoint: 1
 --- !u!1 &6063758894079856951
 GameObject:
   m_ObjectHideFlags: 0
@@ -100,7 +100,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2375368548397594488
 Transform:
   m_ObjectHideFlags: 0
@@ -205,8 +205,8 @@ GameObject:
   m_Component:
   - component: {fileID: 8884702013839080556}
   - component: {fileID: 8884702013839080553}
-  - component: {fileID: 8884702013839080554}
   - component: {fileID: 8884702013839080555}
+  - component: {fileID: 4044021341136896625}
   m_Layer: 6
   m_Name: Infantry
   m_TagString: PlayerUnit
@@ -253,22 +253,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!58 &8884702013839080554
-CircleCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8884702013839080562}
-  m_Enabled: 1
-  m_Density: 1
-  m_Material: {fileID: 6200000, guid: 44607b6334667004bb50ec4df32502b2, type: 2}
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
-  serializedVersion: 2
-  m_Radius: 0.25
 --- !u!114 &8884702013839080555
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -283,6 +267,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   worldController: {fileID: 0}
   rb: {fileID: 8884702013839080553}
+  sprite: {fileID: 2144500199879448808}
   floworint: 1
   destination: {x: 0, y: 0}
   seperation: {fileID: 712095095805065172}
@@ -292,3 +277,19 @@ MonoBehaviour:
   moving: 0
   seperationRadius: 1
   radius: 0.2
+--- !u!70 &4044021341136896625
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8884702013839080562}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_Size: {x: 0.8, y: 0.2}
+  m_Direction: 1

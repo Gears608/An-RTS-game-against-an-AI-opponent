@@ -65,7 +65,7 @@ public class PlayerClass : MonoBehaviour
                 {
                     foreach (GameObject unit in selectedUnits)
                     {
-                        unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
+                        //unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
                     }
                     selectedUnits.Clear();
 
@@ -79,16 +79,11 @@ public class PlayerClass : MonoBehaviour
                     Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
                     foreach (Collider2D box in unitsInArea)
                     {
-                        box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
+                        //box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
                         selectedUnits.Add(box.gameObject);
                     }
                     selectionBox.gameObject.SetActive(false);
 
-                    Debug.Log("Mouse Position: "+mousePos);
-                    if (Physics2D.OverlapCircleAll(mousePos, 0.2f, worldController.terrainMask, -1f, 1f).Length > 0)
-                    {
-                        Debug.Log("Collision Found. ");
-                    }
                     //Debug.Log("Node: "+worldController.GetNode(mousePos).x+", "+ worldController.GetNode(mousePos).y);
                     //Debug.Log("Component: " + worldController.GetComponent(mousePos).indexX + ", " + worldController.GetComponent(mousePos).indexY);
 
@@ -124,7 +119,7 @@ public class PlayerClass : MonoBehaviour
 
     void removeSelectedUnit(GameObject unit)
     {
-        unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
+        //unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
         selectedUnits.Remove(unit);
     }
 
@@ -141,10 +136,10 @@ public class PlayerClass : MonoBehaviour
         List<HierarchicalNode> path = null;
         Vector2 mousePos = GetMousePositionInWorld();
 
+        HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
+
         while (path == null && selectedUnits.Count > 0)
         {
-            HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
-
             //if destination is unreachable
             if (destinationNode == null) 
             {
@@ -176,10 +171,10 @@ public class PlayerClass : MonoBehaviour
                         selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
                     }
                 }
-
-                worldController.RemoveNodeFromGraph(destinationNode);
             }
         }
+
+        worldController.RemoveNodeFromGraph(destinationNode);
 
         List<UnitClass> units = new List<UnitClass>();
         foreach (GameObject unit in selectedUnits)

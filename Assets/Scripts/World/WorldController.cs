@@ -436,7 +436,9 @@ public class WorldController : MonoBehaviour
             //the merging bit
             if (path.Contains(currentNode))
             {
+                Debug.Log("Merging Path Found");
                 List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
+                output.Add(currentNode);
                 while (currentNode.previousNode != null)
                 {
                     currentNode = currentNode.previousNode;
@@ -512,7 +514,7 @@ public class WorldController : MonoBehaviour
         }
 
         HierarchicalNode destinationNode = AddNodeToGraph(destinationPosition);
-        Debug.Log("Temp destination added");
+        Debug.Log("Temp destination added: "+destinationNode.x +", "+destinationNode.y);
 
         while (openList.Count > 0)
         {
@@ -529,6 +531,7 @@ public class WorldController : MonoBehaviour
             //the merging bit
             if (path.Contains(currentNode))
             {
+                Debug.Log("Merging Path Found");
                 List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
                 while (currentNode.previousNode != null)
                 {
@@ -537,13 +540,14 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                Debug.Log("Temp destination removed");
+                Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
             //if destination node is reached without merging then return the path anyway
             if(currentNode == destinationNode)
             {
+                Debug.Log("Alternate Path Found");
                 List<HierarchicalNode> output = new List<HierarchicalNode>();
                 output.Add(currentNode);
                 while (currentNode.previousNode != null)
@@ -553,7 +557,7 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                Debug.Log("Temp destination removed");
+                Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
@@ -601,7 +605,7 @@ public class WorldController : MonoBehaviour
         int maxX = Mathf.Max(component.indexX, destinationComponent.indexX)* componentWidth + componentWidth;
         int minY = Mathf.Min(component.indexY, destinationComponent.indexY)*componentHeight;
         int maxY = Mathf.Max(component.indexY, destinationComponent.indexY)*componentHeight + componentHeight;
-        Debug.Log("Integration field starting pos: "+ tileMap.GetWorldPositionFromIndex(minX, minY) +", Width: "+(maxX - minX)+", Height: "+(maxY-minY));
+        //Debug.Log("Integration field starting pos: "+ tileMap.GetWorldPositionFromIndex(minX, minY) +", Width: "+(maxX - minX)+", Height: "+(maxY-minY));
         TileGrid<int> integrationField = new TileGrid<int>(maxX - minX, maxY - minY, tileSize, tileSize, tileMap.GetWorldPositionFromIndex(minX, minY));
 
         //initial value of -1 for all positions

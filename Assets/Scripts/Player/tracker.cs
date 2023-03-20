@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class tracker : MonoBehaviour
+public class Tracker : MonoBehaviour
 {
     [SerializeField] //serialized to allow assignment in the editor
     private Transform trackerObject; // initializes the variable which holds the tracker which the camera must follow
