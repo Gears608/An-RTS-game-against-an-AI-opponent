@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-
+using UnityEngine.Tilemaps;
 
 public class PlayerClass : MonoBehaviour
 {
     enum Modes { Building, Managing, Interacting }
-
+    [SerializeField]
     Modes mode;
 
     Camera playerCam; // initialises a variable to hold the camera
@@ -18,6 +18,10 @@ public class PlayerClass : MonoBehaviour
     RectTransform selectionBox;  // initialises a variable to hold the visual prompt of the selection box
     private Vector2 selectionBoxStartPos;  // initialises a variable which hold the starting position of the selection box
     public WorldController worldController;
+    [SerializeField]
+    private Tilemap onGround;
+    [SerializeField]
+    private Tile walltile;
 
     void Start()
     {
@@ -28,10 +32,27 @@ public class PlayerClass : MonoBehaviour
 
     void Update()
     {
-        UnitSelection();
-        if (Input.GetMouseButtonDown(1))
+        switch (mode) 
         {
-            FindPaths();
+            case Modes.Managing:
+                UnitSelection();
+                if (Input.GetMouseButtonDown(1))
+                {
+                    FindPaths();
+                }
+                break;
+            case Modes.Building:
+
+                Vector3 mousePos = GetMousePositionInWorld();
+
+                if (Input.GetMouseButtonDown(0))
+                {
+                    Vector3Int rounded = onGround.LocalToCell(mousePos);
+                    onGround.SetTile(rounded, walltile);
+                    worldController.UpdateNodes(mousePos);
+                }
+
+                break;
         }
     }
 
@@ -53,53 +74,36 @@ public class PlayerClass : MonoBehaviour
     // for selecting and deselecting units
     private void UnitSelection()
     {
-        switch (mode)
+        Vector3 mousePos = GetMousePositionInWorld();
+
+        // on mouse down
+        if (Input.GetMouseButtonDown(0))
         {
-            //player in unit management mode
-            case Modes.Managing:
+            foreach (GameObject unit in selectedUnits)
+            {
+                unit.transform.Find("Selected").gameObject.SetActive(false);
+            }
+            selectedUnits.Clear();
 
-                Vector3 mousePos = GetMousePositionInWorld();
+            selectionBoxStartPos = mousePos;
+        }
 
-                // on mouse down
-                if (Input.GetMouseButtonDown(0))
-                {
-                    foreach (GameObject unit in selectedUnits)
-                    {
-                        //unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
-                    }
-                    selectedUnits.Clear();
+        // on mouse up
+        if (Input.GetMouseButtonUp(0))
+        {
+            Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
+            foreach (Collider2D box in unitsInArea)
+            {
+                box.transform.Find("Selected").gameObject.SetActive(true);
+                selectedUnits.Add(box.gameObject);
+            }
+            selectionBox.gameObject.SetActive(false);
+        }
 
-                    selectionBoxStartPos = mousePos;
-                    break;
-                }
-
-                // on mouse up
-                if (Input.GetMouseButtonUp(0))
-                {
-                    Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
-                    foreach (Collider2D box in unitsInArea)
-                    {
-                        //box.transform.GetComponentInChildren<SpriteRenderer>().color = Color.red;
-                        selectedUnits.Add(box.gameObject);
-                    }
-                    selectionBox.gameObject.SetActive(false);
-
-                    //Debug.Log("Node: "+worldController.GetNode(mousePos).x+", "+ worldController.GetNode(mousePos).y);
-                    //Debug.Log("Component: " + worldController.GetComponent(mousePos).indexX + ", " + worldController.GetComponent(mousePos).indexY);
-
-                    break;
-                }
-
-                // while mouse held down
-                if (Input.GetMouseButton(0))
-                {
-                    selectionBoxUpdate(mousePos);
-                    break;
-                }
-
-                break;
-            //player in building mode
-            //case Modes.Building:
+        // while mouse held down
+        if (Input.GetMouseButton(0))
+        {
+            selectionBoxUpdate(mousePos);
         }
     }
 
@@ -119,8 +123,24 @@ public class PlayerClass : MonoBehaviour
 
     void removeSelectedUnit(GameObject unit)
     {
-        //unit.transform.GetComponentInChildren<SpriteRenderer>().color = Color.green;
+        unit.transform.Find("Selected").gameObject.SetActive(false);
         selectedUnits.Remove(unit);
+    }
+
+    /*
+     * UI
+     */
+
+    public void ChangeBuildingMode()
+    {
+        if (mode == Modes.Managing)
+        {
+            mode = Modes.Building;
+        }
+        else
+        {
+            mode = Modes.Managing;
+        }
     }
 
     /*

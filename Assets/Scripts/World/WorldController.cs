@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -21,26 +22,35 @@ public class WorldController : MonoBehaviour
 
     public int terrainMask;
 
-    private float ymod = 4f;
-
     private Dictionary<(Component, Vector2Int), TileGrid<Vector2>> cachedFlowfields;
 
-    public bool displayCost = false;
-    public bool showportals = false;
-    public bool showComponents = false;
-    public bool showGrid = false;
+    [SerializeField] private bool displayCost = false;
+    [SerializeField] private bool showportals = false;
+    [SerializeField] private bool showComponents = false;
+    [SerializeField] private bool showGrid = false;
 
-    public int maxCachedComponents;
+    [SerializeField]
+    private int maxCachedComponents;
 
     [SerializeField]
     private Tilemap walls;
 
+    [SerializeField]
+    private List<UnitClass> allUnits;
+
     private void Start()
     {
+        allUnits = new List<UnitClass>();
+        GameObject[] foundObjects = GameObject.FindGameObjectsWithTag("PlayerUnit");
+        foreach(GameObject unit in foundObjects)
+        {
+            allUnits.Add(unit.GetComponent<UnitClass>());
+        }
+
         tileMap = new TileGrid<Node>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
         terrainMask = LayerMask.GetMask("Impassable");
 
-        components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, /*(componentHeight * tileSize / ymod)*/0));
+        components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, /*(componentHeight * tileSize / 4f)*/0));
         cachedFlowfields = new Dictionary<(Component, Vector2Int), TileGrid<Vector2>>();
 
         Debug.Log("Generating World...");
@@ -56,7 +66,7 @@ public class WorldController : MonoBehaviour
                         tileMap.SetObject(x1 + x * componentWidth, y1 + y * componentHeight, node);
                     }
                 }
-                Vector2 pos = new Vector2(componentHeight * tileSize * height / 2f + ((x * componentWidth * tileSize - y * componentHeight * tileSize) / 2f), ((x * componentWidth * tileSize + y * componentHeight * tileSize) / ymod));
+                Vector2 pos = new Vector2(componentHeight * tileSize * height / 2f + ((x * componentWidth * tileSize - y * componentHeight * tileSize) / 2f), ((x * componentWidth * tileSize + y * componentHeight * tileSize) / 4f));
                 components.SetObject(x, y, new Component(pos.x, pos.y, x, y));
                 //sets whether nodes are walkable or not
                 UpdateComponent(components.GetObject(x, y));
@@ -72,12 +82,13 @@ public class WorldController : MonoBehaviour
             if(component.indexX < width - 1)
             {
                 Debug.Log("Checking vertical");
-                CheckVertical(component, new Vector2(component.x, component.y + (componentHeight * tileSize/2f) - tileSize/2f), new Vector2(tileSize/2f, tileSize/4f));
+                // tileMap.GetIndexFromWorldPosition(new Vector2(component.x, component.y + (componentHeight * tileSize/2f) - tileSize/2f))
+                CheckVertical(component, new Vector2Int((component.indexX * componentWidth) + componentWidth - 1, component.indexY * componentHeight), 1);
             }
             if(component.indexY < height - 1)
             {
                 Debug.Log("Checking horizontal");
-                CheckHorizontal(component, new Vector2(component.x - (componentWidth * tileSize / 2f) + tileSize/2f, component.y + componentHeight * tileSize / 4f), new Vector2(-tileSize / 2f, tileSize / 4f));
+                CheckHorizontal(component, new Vector2Int(component.indexX * componentWidth, (component.indexY * componentHeight) + componentHeight - 1), 1);
             }
             CalculatePaths(component);
         }
@@ -90,6 +101,52 @@ public class WorldController : MonoBehaviour
      *  World Representation
      * 
      */
+
+    public void UpdateNodes(Vector2 position)
+    {
+        Component component = components.GetObject(position);
+        Vector2Int positionAsIndex = tileMap.GetIndexFromWorldPosition(position);
+
+        UpdateComponent(component);
+
+        //Debug.Log(position);
+
+        if (positionAsIndex.x == ((component.indexX + 1) * componentWidth) - 1 && component.indexX < width - 1)
+        {
+            Component neighbourComponent = components.GetObject(component.indexX + 1, component.indexY);
+            RemoveConnectingNodes(component, neighbourComponent);
+            ClearInternalPaths(neighbourComponent);
+            CheckVertical(component, new Vector2Int((component.indexX * componentWidth) + componentWidth - 1, component.indexY * componentHeight), 1);
+            CalculatePaths(neighbourComponent);
+        }
+        if (positionAsIndex.y == ((component.indexY + 1) * componentHeight) - 1 && component.indexY < height - 1)
+        {
+            Component neighbourComponent = components.GetObject(component.indexX, component.indexY + 1);
+            RemoveConnectingNodes(component, neighbourComponent);
+            ClearInternalPaths(neighbourComponent);
+            CheckHorizontal(component, new Vector2Int(component.indexX * componentWidth, (component.indexY * componentHeight) + componentHeight - 1), 1);
+            CalculatePaths(neighbourComponent);
+        }
+        if (positionAsIndex.y == component.indexY * componentHeight && component.indexY > 0)
+        {
+            Component neighbourComponent = components.GetObject(component.indexX, component.indexY - 1);
+            RemoveConnectingNodes(component, neighbourComponent);
+            ClearInternalPaths(neighbourComponent);
+            CheckHorizontal(component, new Vector2Int(component.indexX * componentWidth, component.indexY * componentHeight), -1);
+            CalculatePaths(neighbourComponent);
+        }
+        if (positionAsIndex.x == component.indexX * componentWidth && component.indexX > 0)
+        {
+            Component neighbourComponent = components.GetObject(component.indexX - 1, component.indexY);
+            RemoveConnectingNodes(component, neighbourComponent);
+            ClearInternalPaths(neighbourComponent);
+            CheckVertical(component, new Vector2Int(component.indexX * componentWidth, component.indexY * componentHeight), -1);
+            CalculatePaths(neighbourComponent);
+        }
+
+        ClearInternalPaths(component);
+        CalculatePaths(component);
+    }
 
     //a method which sets nodes as walkable or not
     public void UpdateComponent(Component component)
@@ -111,107 +168,85 @@ public class WorldController : MonoBehaviour
     }
 
     //checks a vertical line of a component
-    private void CheckVertical(Component component, Vector2 startPos, Vector2 modifier)
+    private void CheckVertical(Component component, Vector2Int startPosIndex, int xModifier)
     {
         int length = 0;
-        Vector2 currentPos = startPos;
-        //Debug.Log("starting at: " + startPos);
-        for (int x = 0; x < componentHeight-1; x++)
+        for (int y = startPosIndex.y; y < startPosIndex.y + componentHeight; y++)
         {
-            //Debug.Log("Checking: "+ currentPos);
-            Node currentNode = tileMap.GetObject(currentPos);
-            Node neighbourNode = tileMap.GetObject(currentPos + modifier);
-            //Debug.Log(currentPos);
+            Node currentNode = tileMap.GetObject(startPosIndex.x, y);
+            Node neighbourNode = tileMap.GetObject(startPosIndex.x + xModifier, y);
+
             if (currentNode.cost < 255 && neighbourNode.cost < 255)
             {
                 length++;
             }
             else if (length > 0)
             {
-                //Debug.Log("midpoint = " + currentPos + " - " + (new Vector2(-tileSize / 2f, tileSize / 4f) * length / 2f));
-                Vector2 midPoint = currentPos + (new Vector2(-tileSize / 2f, tileSize / 4f) * length/2f);
-                Vector2Int midPointInt = tileMap.GetIndexFromWorldPosition(midPoint);
-                HierarchicalNode newHNode = new HierarchicalNode(midPointInt.x, midPointInt.y, component);
-                Vector2Int temp = tileMap.GetIndexFromWorldPosition(midPoint + modifier);
-                HierarchicalNode neighbourHNode = new HierarchicalNode(temp.x, temp.y, components.GetObject(currentPos + modifier));
+                int midPointY = y - Mathf.FloorToInt(length/2f) - 1;
+                HierarchicalNode newHNode = new HierarchicalNode(startPosIndex.x, midPointY, component);
+                HierarchicalNode neighbourHNode = new HierarchicalNode(startPosIndex.x + xModifier, midPointY, components.GetObject(component.indexX + xModifier, component.indexY));
 
                 newHNode.AddNode(neighbourHNode, 1);
                 neighbourHNode.AddNode(newHNode, 1);
-                //Debug.Log("new node at: " + midPoint.x + ", " + midPoint.y);
+                
                 component.AddNode(newHNode);
-                components.GetObject(currentPos + modifier).AddNode(neighbourHNode);
+                neighbourHNode.component.AddNode(neighbourHNode);
                 length = 0;
             }
-
-            currentPos += new Vector2(tileSize / 2f, -tileSize / 4f);
         }
         if (length > 0)
         {
-            //Debug.Log("midpoint = " + currentPos + " - " + (new Vector2(-tileSize / 2f, tileSize / 4f) * length / 2f));
-            Vector2 midPoint = currentPos + (new Vector2(-tileSize / 2f, tileSize / 4f) * length / 2f);
-            Vector2Int midPointInt = tileMap.GetIndexFromWorldPosition(midPoint);
-            HierarchicalNode newHNode = new HierarchicalNode(midPointInt.x, midPointInt.y, component);
-            Vector2Int temp = tileMap.GetIndexFromWorldPosition(midPoint + modifier);
-            HierarchicalNode neighbourHNode = new HierarchicalNode(temp.x, temp.y, components.GetObject(currentPos + modifier));
+            int midPointY = startPosIndex.y + componentHeight - 1 - Mathf.FloorToInt(length / 2f);
+            Debug.Log(midPointY);
+            HierarchicalNode newHNode = new HierarchicalNode(startPosIndex.x, midPointY, component);
+            HierarchicalNode neighbourHNode = new HierarchicalNode(startPosIndex.x + xModifier, midPointY, components.GetObject(component.indexX + xModifier, component.indexY));
 
             newHNode.AddNode(neighbourHNode, 1);
             neighbourHNode.AddNode(newHNode, 1);
-            //Debug.Log("new node at: " + midPoint.x + ", " + midPoint.y);
+
             component.AddNode(newHNode);
-            //Debug.Log(currentPos + modifier);
-            //Debug.Log(components.GetIndexFromWorldPosition(currentPos + modifier));
-            components.GetObject(currentPos + modifier).AddNode(neighbourHNode);
+            neighbourHNode.component.AddNode(neighbourHNode);
         }
     }
 
     //checks a horizontal line of a component
-    private void CheckHorizontal(Component component, Vector2 startPos, Vector2 modifier)
+    private void CheckHorizontal(Component component, Vector2Int startPosIndex, int yModifier)
     {
         int length = 0;
-        Vector2 currentPos = startPos;
-        for (int x = 0; x < componentWidth-1; x++)
+        for (int x = startPosIndex.x; x < startPosIndex.x + componentWidth; x++)
         {
-            //Debug.Log("Checking: "+ currentPos);
-            Node currentNode = tileMap.GetObject(currentPos);
-            Node neighbourNode = tileMap.GetObject(currentPos + modifier);
+            Node currentNode = tileMap.GetObject(x, startPosIndex.y);
+            Node neighbourNode = tileMap.GetObject(x,  startPosIndex.y + yModifier);
+
             if (currentNode.cost < 255 && neighbourNode.cost < 255)
             {
                 length++;
             }
             else if (length > 0)
             {
-                //Debug.Log("midpoint = " +currentPos+" - " + (new Vector2(-tileSize / 2f, -tileSize / 4f) * length / 2f));
-                Vector2 midPoint = currentPos + (new Vector2(-tileSize / 2f, -tileSize / 4f) * length/2f);
-                Vector2Int midPointInt = tileMap.GetIndexFromWorldPosition(midPoint);
-                HierarchicalNode newHNode = new HierarchicalNode(midPointInt.x, midPointInt.y, component);
-                Vector2Int temp = tileMap.GetIndexFromWorldPosition(midPoint + modifier);
-                HierarchicalNode neighbourHNode = new HierarchicalNode(temp.x, temp.y, components.GetObject(currentPos + modifier));
+                int midPointX = x - Mathf.FloorToInt(length/2f) - 1;
+                HierarchicalNode newHNode = new HierarchicalNode(midPointX, startPosIndex.y, component);
+                HierarchicalNode neighbourHNode = new HierarchicalNode(midPointX, startPosIndex.y + yModifier, components.GetObject(component.indexX, component.indexY + yModifier));
 
                 newHNode.AddNode(neighbourHNode, 1);
                 neighbourHNode.AddNode(newHNode, 1);
 
-                //Debug.Log("new node at: " + midPoint.x + ", " + midPoint.y);
                 component.AddNode(newHNode);
-                components.GetObject(currentPos + modifier).AddNode(neighbourHNode);
+                neighbourHNode.component.AddNode(neighbourHNode);
                 length = 0;
             }
-
-            currentPos += new Vector2(tileSize / 2f, tileSize / 4f);
         }
         if (length > 0)
         {
-            //Debug.Log("midpoint = " + currentPos + " - " + (new Vector2(-tileSize / 2f, -tileSize / 4f) * length / 2f));
-            Vector2 midPoint = currentPos + (new Vector2(-tileSize / 2f, -tileSize / 4f) * length / 2f);
-            Vector2Int midPointInt = tileMap.GetIndexFromWorldPosition(midPoint);
-            HierarchicalNode newHNode = new HierarchicalNode(midPointInt.x, midPointInt.y, component);
-            Vector2Int temp = tileMap.GetIndexFromWorldPosition(midPoint + modifier);
-            HierarchicalNode neighbourHNode = new HierarchicalNode(temp.x, temp.y, components.GetObject(currentPos + modifier));
+            int midPointX = startPosIndex.x + componentWidth - 1 - Mathf.FloorToInt(length / 2f);
+            HierarchicalNode newHNode = new HierarchicalNode(midPointX, startPosIndex.y, component);
+            HierarchicalNode neighbourHNode = new HierarchicalNode(midPointX, startPosIndex.y + yModifier, components.GetObject(component.indexX, component.indexY + yModifier));
 
             newHNode.AddNode(neighbourHNode, 1);
             neighbourHNode.AddNode(newHNode, 1);
-            //Debug.Log("new node at: " + midPoint.x + ", " + midPoint.y);
+
             component.AddNode(newHNode);
-            components.GetObject(currentPos + modifier).AddNode(neighbourHNode);
+            neighbourHNode.component.AddNode(neighbourHNode);
         }
     }
 
@@ -254,9 +289,15 @@ public class WorldController : MonoBehaviour
     }
 
     // a function which will clear all the paths on a component
-    private void ClearPaths(Component component)
+    private void ClearInternalPaths(Component component)
     {
-        
+        foreach (HierarchicalNode node in component.portalNodes)
+        {
+            foreach(HierarchicalNode node_ in component.portalNodes)
+            {
+                node.RemoveNode(node_);
+            }
+        }
     }
 
 
@@ -293,6 +334,27 @@ public class WorldController : MonoBehaviour
     {
         Component component = components.GetObject(tileMap.GetWorldPositionFromIndex(node.x, node.y));
         component.RemoveNode(node);
+    }
+
+    public void RemoveConnectingNodes(Component component1, Component component2)
+    {
+        List<HierarchicalNode> nodesToRemove = new List<HierarchicalNode>();
+        foreach(HierarchicalNode node in component1.portalNodes)
+        {
+            foreach(HierarchicalNode node_ in node.connectedNodes.Keys)
+            {
+                if(node_.component == component2)
+                {
+                    nodesToRemove.Add(node);
+                    component2.RemoveNode(node_);
+                }
+            }
+        }
+
+        foreach(HierarchicalNode node in nodesToRemove)
+        {
+            component1.RemoveNode(node);
+        }
     }
 
 
@@ -639,11 +701,11 @@ public class WorldController : MonoBehaviour
 
             //gets a list of the nodes neighbours
             List<Vector2Int> neighbours = tileMap.GetCardinalNeighbours(currentNode.x, currentNode.y);
-            //Debug.Log("Current Node Position: " + currentNode.x + ", " + currentNode.y);
+
             //loops over all the nodes neighbours
             foreach (Vector2Int neighbourNode in neighbours)
             {
-                //Debug.Log("Neighbour Node Position: "+neighbourNode.x+", "+neighbourNode.y);
+
                 if (neighbourNode.x >= maxX || neighbourNode.x < minX || neighbourNode.y >= maxY || neighbourNode.y < minY)
                 {
                     continue;
@@ -659,8 +721,6 @@ public class WorldController : MonoBehaviour
 
                 int currentNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
                 int neighbourNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
-
-                //Debug.Log(currentNode_ +", "+neighbourNode_);
 
                 //if the cost of the neighbour is not set, or is less than the current
                 if (currentNode_ + 1 < neighbourNode_ || neighbourNode_ == -1)
@@ -678,6 +738,11 @@ public class WorldController : MonoBehaviour
         return integrationField;
     }
 
+    /*
+     *  A function which converts a TileGrid of ints to a TileGrid of Vector2s where they each point at their lowest cost neighnour
+     *  
+     *  TileGrid<int> integrationField - the integration field to be converted
+    */
     private TileGrid<Vector2> CreateFlowField(TileGrid<int> integrationField)
     {
         int width = integrationField.GetTileWidth();
@@ -722,23 +787,96 @@ public class WorldController : MonoBehaviour
         return flowField;
     }
 
-    public (TileGrid<Vector2>, TileGrid<int>) GetFlowField(Vector3 source, Vector2Int destination)
+    /*
+     *  A function which returns a flowfield (TileGrid<Vector2>) to destination, including the destination and source components
+     *  It will check if there is a cached flowfield which works, if not, it will make a new one
+     *  
+     *  Vector2 source - the source position
+     *  Vector2Int destination - the destination index 
+    */
+    public TileGrid<Vector2> GetFlowField(Vector2 source, Vector2Int destination)
     {
+        //if the dictionary containing our cached flowfields is at the set limit
+        
+        if (cachedFlowfields.Keys.Count == maxCachedComponents)
+        {
+            //remove an entry
+            cachedFlowfields.Remove(cachedFlowfields.Keys.FirstOrDefault());
+        }
+        
+
+        //get our new/existing flowfield
         Component component = components.GetObject(source);
-        //Debug.Log("Source: "+component.indexX+", "+component.indexY);
-        TileGrid<int> intField = CreateIntegrationField(component, tileMap.GetWorldPositionFromIndex(destination.x, destination.y));
+        //checks if the flowfield is not cached
         if(!cachedFlowfields.ContainsKey((component, destination)))
         {
+            //creates a new flowfield
+            TileGrid<int> intField = CreateIntegrationField(component, tileMap.GetWorldPositionFromIndex(destination.x, destination.y));
+            //caches the flowfield in the dictionary
             cachedFlowfields.Add((component, destination), CreateFlowField(intField));
         }
-        return (cachedFlowfields[(component, destination)], intField);
+        
+        return cachedFlowfields[(component, destination)];
     }
 
-    //a function which calculates the h value
+    /*
+     * A function which calculates the h value between 2 given positions
+     * 
+     *  Vector2 source - the first position
+     *  Vector2 destination - the second position
+    */
     private int CalculateH(Vector2 source, Vector2 destination)
     {
         //logic for calculating the heuristic
-        return Mathf.FloorToInt(Mathf.Abs(source.x - destination.x)) + Mathf.FloorToInt(Mathf.Abs(source.y - destination.y));
+        return Mathf.FloorToInt(Mathf.Abs(source.x - destination.x)) + Mathf.FloorToInt(Mathf.Abs(source.y - destination.y)/2f);
+    }
+
+    /*
+     * 
+     * Flocking 
+     * 
+     */
+
+    public Vector2 GetSeperation(UnitClass unit)
+    {
+        Vector2 position = unit.transform.position;
+        Vector2 totalForce = new Vector2();
+        int nearby = 0;
+
+        foreach (UnitClass other in allUnits)
+        {
+            Vector2 currentForce = position - (Vector2)other.transform.position;
+            if (new Vector2(currentForce.x, currentForce.y * 2f).magnitude < unit.seperationRadius)
+            {
+                nearby++;
+                float direction = currentForce.magnitude;
+                currentForce.Normalize();
+                float radius = other.radius + unit.radius;
+
+                totalForce += currentForce * (1 - ((direction - radius) / unit.seperationRadius - radius));
+            }
+        }
+
+        if(nearby == 0)
+        {
+            return Vector2.zero;
+        }
+
+        return totalForce * (unit.maxForce / nearby);
+    }
+
+    public void AlertNeighbours(UnitClass unit)
+    {
+        Vector2 position = unit.transform.position;
+
+        foreach (UnitClass other in allUnits)
+        {
+            Vector2 currentForce = position - (Vector2)other.transform.position;
+            if (new Vector2(currentForce.x, currentForce.y * 2f).magnitude < unit.seperationRadius && other.moving == true && unit.flock == other.flock)
+            {
+                other.StopMoving();
+            }
+        }
     }
 
 
@@ -769,7 +907,7 @@ public class WorldController : MonoBehaviour
 
             if (showportals)
             {
-                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height) / 2f, (tileSize / ymod)));
+                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height) / 2f, (tileSize / 4f)));
                 foreach (Component c_ in components.tileArray)
                 {
                     List<HierarchicalNode> n = c_.portalNodes;
@@ -777,16 +915,16 @@ public class WorldController : MonoBehaviour
                     {
                         Gizmos.color = Color.red;
 
-                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) - (tileSize / 2f), (n_.x + n_.y) * tileSize / ymod), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / ymod) + (tileSize / ymod)));
-                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) + (tileSize / 2f), (n_.x + n_.y) * tileSize / ymod), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / ymod) + (tileSize / ymod)));
-                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) - (tileSize / 2f), (n_.x + n_.y) * tileSize / ymod), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / ymod) - (tileSize / ymod)));
-                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) + (tileSize / 2f), (n_.x + n_.y) * tileSize / ymod), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / ymod) - (tileSize / ymod)));
+                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) - (tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / 4f) + (tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) + (tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / 4f) + (tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) - (tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / 4f) - (tileSize / 4f)));
+                        Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f) + (tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2(((n_.x - n_.y) * tileSize / 2f), ((n_.x + n_.y) * tileSize / 4f) - (tileSize / 4f)));
 
                         //Gizmos.color = Color.white;
                         foreach (HierarchicalNode n__ in n_.connectedNodes.Keys)
                         {
-                            Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / ymod), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / ymod));
-                            Handles.Label(Vector2.Lerp(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / ymod) + tileMap.GetStartPosition(), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / ymod) + tileMap.GetStartPosition(), 0.5f), n_.connectedNodes[n__].ToString());
+                            Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f));
+                            Handles.Label(Vector2.Lerp(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f) + tileMap.GetStartPosition(), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f) + tileMap.GetStartPosition(), 0.5f), n_.connectedNodes[n__].ToString());
                         }
                     }
                 }
@@ -796,15 +934,15 @@ public class WorldController : MonoBehaviour
             if (showGrid)
             {
                 Gizmos.color = Color.gray;
-                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height )/2f, (tileSize/ymod)));
+                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height )/2f, (tileSize/4f)));
                 foreach (Node n in tileMap.tileArray)
                 {
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / ymod), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / ymod) + (tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / ymod), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / ymod) + (tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / ymod), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / ymod) - (tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / ymod), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / ymod) - (tileSize / ymod)));
+                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) + (tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) + (tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
 
-                    //Handles.Label(new Vector2((componentHeight * tileHeight * height * (tileHeight / 2f)) + ((n.x * tileWidth - n.y * tileHeight) / 2f), ((n.x * tileWidth + n.y * tileHeight) / ymod) + (tileHeight/ymod)), n.x + ", " + n.y);
+                    //Handles.Label(new Vector2((componentHeight * tileHeight * height * (tileHeight / 2f)) + ((n.x * tileWidth - n.y * tileHeight) / 2f), ((n.x * tileWidth + n.y * tileHeight) / 4f) + (tileHeight/4f)), n.x + ", " + n.y);
                 }
                 Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, 0));
             }
@@ -812,15 +950,15 @@ public class WorldController : MonoBehaviour
             if (showComponents)
             {
                 Gizmos.color = Color.black;
-                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height)/2f, (componentHeight * tileSize / ymod)));
+                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height)/2f, (componentHeight * tileSize / 4f)));
                 foreach (Component c in components.tileArray)
                 {
-                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) - (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod) + (componentHeight * tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) + (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod) + (componentHeight * tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) - (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod) - (componentHeight * tileSize / ymod)));
-                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) + (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod) - (componentHeight * tileSize / ymod)));
+                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) - (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) + (componentHeight * tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) + (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) + (componentHeight * tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) - (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) - (componentHeight * tileSize / 4f)));
+                    Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) + (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) - (componentHeight * tileSize / 4f)));
 
-                    //Handles.Label(new Vector2(componentHeight * tileSize * height/2f + ((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f), ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / ymod)), c.indexX + ", " + c.indexY);
+                    //Handles.Label(new Vector2(componentHeight * tileSize * height/2f + ((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f), ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f)), c.indexX + ", " + c.indexY);
 
                     //Gizmos.DrawWireCube(new Vector2(c.indexX * componentWidth * tileWidth, c.indexY * componentHeight * tileHeight) + new Vector2(componentWidth * tileWidth, componentHeight * tileHeight)/2, new Vector2(componentWidth * tileWidth, componentHeight * tileHeight));
                 }

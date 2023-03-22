@@ -18,20 +18,20 @@ public class Flock : MonoBehaviour
     public Vector2 CohesionSteering(UnitClass unit)
     {
         //calculates the midpoint of the flock
-        Vector2 currentPosition = unit.transform.position;
+        Vector3 currentPosition = unit.transform.position;
         Vector2 midpoint = new Vector2();
         int nearbyCount = 0;
 
-        foreach(UnitClass other in flock)
+        foreach(UnitClass member in flock)
         {
-            if(other == unit)
+            if(member == unit)
             {
                 continue;
             }
 
-            Vector2 otherPosition = other.transform.position;
-            float distanace = Vector2.Distance(currentPosition, otherPosition);
-            if (distanace < cohesionMax)
+            Vector2 otherPosition = member.transform.position;
+            Vector2 nearby = currentPosition - member.transform.position;
+            if (new Vector2(nearby.x, nearby.y * 2f).magnitude < cohesionMax)
             {
                 midpoint += otherPosition;
                 nearbyCount ++;
@@ -62,8 +62,8 @@ public class Flock : MonoBehaviour
 
         foreach (UnitClass member in flock)
         {
-            float distanace = Vector2.Distance(unit.transform.position, member.transform.position);
-            if (distanace < cohesionMax && member.rb.velocity.magnitude > 0)
+            Vector2 nearby = unit.transform.position - member.transform.position;
+            if (new Vector2(nearby.x, nearby.y * 2f).magnitude < cohesionMax && member.rb.velocity.magnitude > 0)
             {
                 alignment += member.rb.velocity.normalized;
                 nearbyCount++;
