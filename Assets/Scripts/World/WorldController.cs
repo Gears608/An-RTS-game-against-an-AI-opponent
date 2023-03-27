@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
 public class WorldController : MonoBehaviour
 {
@@ -31,9 +30,6 @@ public class WorldController : MonoBehaviour
 
     [SerializeField]
     private int maxCachedComponents;
-
-    [SerializeField]
-    private Tilemap walls;
 
     [SerializeField]
     private List<UnitClass> allUnits;
@@ -109,8 +105,7 @@ public class WorldController : MonoBehaviour
 
         UpdateComponent(component);
 
-        //Debug.Log(position);
-
+        Debug.Log("Checking edges");
         if (positionAsIndex.x == ((component.indexX + 1) * componentWidth) - 1 && component.indexX < width - 1)
         {
             Component neighbourComponent = components.GetObject(component.indexX + 1, component.indexY);
@@ -144,13 +139,94 @@ public class WorldController : MonoBehaviour
             CalculatePaths(neighbourComponent);
         }
 
+        Debug.Log("calculating new paths");
         ClearInternalPaths(component);
         CalculatePaths(component);
+    }
+
+    public void UpdateNodes(List<Vector2Int> positionsAsIndex)
+    {
+        int maxY = positionsAsIndex[0].y;
+        int maxX = positionsAsIndex[0].x;
+        int minY = positionsAsIndex[0].y;
+        int minX = positionsAsIndex[0].x;
+
+        List<Component> componentsToUpdate = new List<Component>();
+        foreach(Vector2Int position in positionsAsIndex)
+        {
+            Component current = components.GetObject(Mathf.FloorToInt(position.x / componentWidth), Mathf.FloorToInt(position.y / componentHeight));
+            if (!componentsToUpdate.Contains(current))
+            {
+                componentsToUpdate.Add(current);
+            }
+
+            if(position.x < minX)
+            {
+                minX = position.x;
+            }
+            if(position.x > maxX)
+            {
+                maxX = position.x;
+            }
+            if (position.y > maxY)
+            {
+                maxY = position.y;
+            }
+            if (position.x < minY)
+            {
+                minY = position.y;
+            }
+        }
+
+        foreach (Component component in componentsToUpdate)
+        {
+            //UpdateComponent(component);
+
+
+            Debug.Log("Checking edges");
+            if (maxX >= ((component.indexX + 1) * componentWidth) - 1 && component.indexX < width - 1)
+            {
+                Component neighbourComponent = components.GetObject(component.indexX + 1, component.indexY);
+                RemoveConnectingNodes(component, neighbourComponent);
+                ClearInternalPaths(neighbourComponent);
+                CheckVertical(component, new Vector2Int((component.indexX * componentWidth) + componentWidth - 1, component.indexY * componentHeight), 1);
+                CalculatePaths(neighbourComponent);
+            }
+            if (maxY >= ((component.indexY + 1) * componentHeight) - 1 && component.indexY < height - 1)
+            {
+                Component neighbourComponent = components.GetObject(component.indexX, component.indexY + 1);
+                RemoveConnectingNodes(component, neighbourComponent);
+                ClearInternalPaths(neighbourComponent);
+                CheckHorizontal(component, new Vector2Int(component.indexX * componentWidth, (component.indexY * componentHeight) + componentHeight - 1), 1);
+                CalculatePaths(neighbourComponent);
+            }
+            if (minY <= component.indexY * componentHeight && component.indexY > 0)
+            {
+                Component neighbourComponent = components.GetObject(component.indexX, component.indexY - 1);
+                RemoveConnectingNodes(component, neighbourComponent);
+                ClearInternalPaths(neighbourComponent);
+                CheckHorizontal(component, new Vector2Int(component.indexX * componentWidth, component.indexY * componentHeight), -1);
+                CalculatePaths(neighbourComponent);
+            }
+            if (minX <= component.indexX * componentWidth && component.indexX > 0)
+            {
+                Component neighbourComponent = components.GetObject(component.indexX - 1, component.indexY);
+                RemoveConnectingNodes(component, neighbourComponent);
+                ClearInternalPaths(neighbourComponent);
+                CheckVertical(component, new Vector2Int(component.indexX * componentWidth, component.indexY * componentHeight), -1);
+                CalculatePaths(neighbourComponent);
+            }
+
+            Debug.Log("calculating new paths");
+            ClearInternalPaths(component);
+            CalculatePaths(component);
+        }
     }
 
     //a method which sets nodes as walkable or not
     public void UpdateComponent(Component component)
     {
+        Debug.Log("updating component: "+component.indexX+", "+ component.indexY);
         int maxX = component.indexX*componentWidth + componentWidth;
         int maxY = component.indexY*componentWidth + componentHeight;
 
@@ -158,9 +234,10 @@ public class WorldController : MonoBehaviour
         {
             for (int y = component.indexY*componentHeight; y < maxY; y++)
             {
-                Vector3Int pos = walls.LocalToCell(tileMap.GetWorldPositionFromIndex(x, y));
-                if(walls.GetTile(pos) != null)
+                Vector2 position = tileMap.GetWorldPositionFromIndex(x, y);
+                if (Physics2D.OverlapPointAll(position + new Vector2(0, tileSize / 4f), terrainMask, 1f, -1f).Length > 0)
                 {
+                    //Debug.Log("Updated cost");
                     tileMap.GetObject(x, y).cost = 255;
                 }
             }
@@ -310,8 +387,6 @@ public class WorldController : MonoBehaviour
             return null;
         }
 
-        //Debug.Log(component.x + ", " + component.y);
-
         TileGrid<int> integrationField = CreateIntegrationField(component, position);
         Vector2Int temp = tileMap.GetIndexFromWorldPosition(position);
         HierarchicalNode newNode = new HierarchicalNode(temp.x, temp.y, component);
@@ -322,7 +397,6 @@ public class WorldController : MonoBehaviour
             int weight = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(node.x, node.y));
             if (weight != -1)
             {
-                //Debug.Log(node.x + ", " + node.y + " Connected to " + newNode.x + ", " + newNode.y);
                 node.connectedNodes.Add(newNode, weight);
             }
         }
@@ -355,6 +429,61 @@ public class WorldController : MonoBehaviour
         {
             component1.RemoveNode(node);
         }
+    }
+
+    public bool CheckBuildingPlacement(Vector2 position, GameObject buildingPrefab)
+    {
+        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
+        Building building = buildingPrefab.GetComponent<Building>();
+
+        if(positionIndex.x > width * componentWidth || positionIndex.x < 0 || positionIndex.y > height * componentHeight || positionIndex.y < 0)
+        {
+            return false;
+        }
+
+        for (int x = 0; x < building.width; x++)
+        {
+            for (int y = 0; y < building.height; y++)
+            {
+                Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
+                if(tileMap.GetObject(pos.x, pos.y).cost == 255)
+                {
+                    return false;
+                }
+            }
+        }
+        //Debug.Log("cannot place");
+        return true;
+    }
+
+    public void PlaceBuilding(Vector2 position, GameObject buildingPrefab)
+    {
+        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
+        Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
+
+        Instantiate(buildingPrefab, gridPosition, buildingPrefab.transform.rotation);
+
+        Building building = buildingPrefab.GetComponent<Building>();
+
+        List<Vector2Int> positions = new List<Vector2Int>();
+        for (int x = 0; x < building.width; x++)
+        {
+            for (int y = 0; y < building.height; y++)
+            {
+                Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
+                positions.Add(pos);
+                tileMap.GetObject(pos.x, pos.y).cost = 255;
+            }
+        }
+
+        UpdateNodes(positions);
+    }
+
+    public Vector2 WorldToGridPosition(Vector2 position)
+    {
+        Vector2Int index = tileMap.GetIndexFromWorldPosition(position);
+        Vector2 output = tileMap.GetWorldPositionFromIndex(index.x, index.y);
+        return output;
     }
 
 
@@ -659,7 +788,6 @@ public class WorldController : MonoBehaviour
     // a functtion to create an integration field
     private TileGrid<int> CreateIntegrationField(Component component, Vector2 destination)
     {
-        //Debug.Log(destination);
         //gets the component of the destination
         Component destinationComponent = components.GetObject(new Vector2(destination.x, destination.y));
         //sets the bounds for the integration field
@@ -667,7 +795,7 @@ public class WorldController : MonoBehaviour
         int maxX = Mathf.Max(component.indexX, destinationComponent.indexX)* componentWidth + componentWidth;
         int minY = Mathf.Min(component.indexY, destinationComponent.indexY)*componentHeight;
         int maxY = Mathf.Max(component.indexY, destinationComponent.indexY)*componentHeight + componentHeight;
-        //Debug.Log("Integration field starting pos: "+ tileMap.GetWorldPositionFromIndex(minX, minY) +", Width: "+(maxX - minX)+", Height: "+(maxY-minY));
+
         TileGrid<int> integrationField = new TileGrid<int>(maxX - minX, maxY - minY, tileSize, tileSize, tileMap.GetWorldPositionFromIndex(minX, minY));
 
         //initial value of -1 for all positions
@@ -941,8 +1069,6 @@ public class WorldController : MonoBehaviour
                     Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) + (tileSize / 4f)));
                     Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
                     Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
-
-                    //Handles.Label(new Vector2((componentHeight * tileHeight * height * (tileHeight / 2f)) + ((n.x * tileWidth - n.y * tileHeight) / 2f), ((n.x * tileWidth + n.y * tileHeight) / 4f) + (tileHeight/4f)), n.x + ", " + n.y);
                 }
                 Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, 0));
             }
@@ -958,9 +1084,6 @@ public class WorldController : MonoBehaviour
                     Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) - (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) - (componentHeight * tileSize / 4f)));
                     Gizmos.DrawLine(new Vector2(((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f) + (componentWidth * tileSize / 2f), (c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f), new Vector2((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f, ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f) - (componentHeight * tileSize / 4f)));
 
-                    //Handles.Label(new Vector2(componentHeight * tileSize * height/2f + ((c.indexX * componentWidth * tileSize - c.indexY * componentHeight * tileSize) / 2f), ((c.indexX * componentWidth * tileSize + c.indexY * componentHeight * tileSize) / 4f)), c.indexX + ", " + c.indexY);
-
-                    //Gizmos.DrawWireCube(new Vector2(c.indexX * componentWidth * tileWidth, c.indexY * componentHeight * tileHeight) + new Vector2(componentWidth * tileWidth, componentHeight * tileHeight)/2, new Vector2(componentWidth * tileWidth, componentHeight * tileHeight));
                 }
                 Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, 0));
             }

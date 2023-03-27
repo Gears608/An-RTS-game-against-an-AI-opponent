@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Tilemaps;
+using TMPro;
 
 public class PlayerClass : MonoBehaviour
 {
-    enum Modes { Building, Managing, Interacting }
+    enum Modes { Building, Managing, Interacting, Destroying }
     [SerializeField]
     Modes mode;
 
@@ -17,11 +17,20 @@ public class PlayerClass : MonoBehaviour
     [SerializeField]
     RectTransform selectionBox;  // initialises a variable to hold the visual prompt of the selection box
     private Vector2 selectionBoxStartPos;  // initialises a variable which hold the starting position of the selection box
-    public WorldController worldController;
     [SerializeField]
-    private Tilemap onGround;
+    private WorldController worldController;
+
     [SerializeField]
-    private Tile walltile;
+    private GameObject buildingPrefab;
+    [SerializeField]
+    private GameObject buildingVisual;
+    [SerializeField]
+    private GameObject buildingMenu;
+
+    [SerializeField]
+    private int gold;
+    [SerializeField]
+    private TMP_Text goldDisplay;
 
     void Start()
     {
@@ -32,6 +41,8 @@ public class PlayerClass : MonoBehaviour
 
     void Update()
     {
+        goldDisplay.text = "Gold: " + gold.ToString();
+
         switch (mode) 
         {
             case Modes.Managing:
@@ -43,15 +54,11 @@ public class PlayerClass : MonoBehaviour
                 break;
             case Modes.Building:
 
-                Vector3 mousePos = GetMousePositionInWorld();
+                BuildingLoop();
 
-                if (Input.GetMouseButtonDown(0))
-                {
-                    Vector3Int rounded = onGround.LocalToCell(mousePos);
-                    onGround.SetTile(rounded, walltile);
-                    worldController.UpdateNodes(mousePos);
-                }
-
+                break;
+            case Modes.Destroying:
+                DestroyLoop();
                 break;
         }
     }
@@ -128,19 +135,110 @@ public class PlayerClass : MonoBehaviour
     }
 
     /*
+     * Building
+     */
+
+    private void BuildingLoop()
+    {
+        Vector3 mousePos = GetMousePositionInWorld();
+        buildingVisual.transform.position = worldController.WorldToGridPosition(mousePos + new Vector3(0, 0.5f));
+
+        if (buildingPrefab != null)
+        {
+
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (worldController.CheckBuildingPlacement(mousePos, buildingPrefab) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                {
+                    int cost = buildingPrefab.GetComponent<Building>().cost;
+                    if (gold >= cost)
+                    {
+                        worldController.PlaceBuilding(mousePos, buildingPrefab);
+                        gold -= cost;
+                    }
+                    else
+                    {
+                        Debug.Log("Not enough gold!");
+                    }
+                }
+                else
+                {
+                    Debug.Log("Cannot place here!");
+                }
+            }
+            if (Input.GetMouseButtonDown(1))
+            {
+                Vector2Int o = worldController.tileMap.GetIndexFromWorldPosition(mousePos);
+                Collider2D[] y = Physics2D.OverlapCircleAll(worldController.tileMap.GetWorldPositionFromIndex(o.x, o.y) + new Vector2(0, 1 / 4f), 1 / 4f, LayerMask.GetMask("Impassable"), 1f, -1f);
+                foreach (Collider2D x in y)
+                {
+                    Debug.Log(y);
+                }
+            }
+        }
+    }
+
+    private void DestroyLoop()
+    {
+        if (Input.GetMouseButtonDown(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            Vector3 mousePos = GetMousePositionInWorld();
+            Collider2D building = Physics2D.OverlapPoint(mousePos);
+            if(building != null)
+            {
+                if(building.gameObject.tag == "PlayerBuilding")
+                {
+                    Destroy(building.gameObject);
+                }
+            }
+        }
+    }
+
+    /*
      * UI
      */
 
     public void ChangeBuildingMode()
     {
-        if (mode == Modes.Managing)
+        if (mode != Modes.Building)
         {
+            buildingMenu.SetActive(true);
             mode = Modes.Building;
+            selectionBox.gameObject.SetActive(false);
+        }
+        else
+        {
+            DisableUI();
+            mode = Modes.Managing;
+        }
+    }
+
+    public void ChangeDestroyMode()
+    {
+        if (mode != Modes.Destroying)
+        {
+            DisableUI();
+            mode = Modes.Destroying;
         }
         else
         {
             mode = Modes.Managing;
         }
+    }
+
+    private void DisableUI()
+    {
+        selectionBox.gameObject.SetActive(false);
+        buildingVisual.SetActive(false);
+        buildingMenu.SetActive(false);
+        buildingPrefab = null;
+    }
+
+    public void SetBuildingPrefab(GameObject buildingPrefab)
+    {
+        buildingVisual.GetComponent<SpriteRenderer>().sprite = buildingPrefab.GetComponentInChildren<SpriteRenderer>().sprite;
+        buildingVisual.SetActive(true);
+        this.buildingPrefab = buildingPrefab;
     }
 
     /*
