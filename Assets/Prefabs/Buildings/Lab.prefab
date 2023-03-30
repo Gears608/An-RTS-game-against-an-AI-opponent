@@ -10,9 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 8506097791855156791}
   - component: {fileID: 8239263905081268454}
+  - component: {fileID: 8377337364879346972}
   m_Layer: 9
   m_Name: Sprite
-  m_TagString: Untagged
+  m_TagString: PlayerBuilding
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -84,6 +85,39 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 1
+--- !u!60 &8377337364879346972
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2916854057150806647}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0.32}
+    oldSize: {x: 2, y: 1.5}
+    newSize: {x: 2, y: 1.5}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.1875, y: 1.02}
+      - {x: -1, y: 0.61375}
+      - {x: -1, y: -0.07374999}
+      - {x: -0.375, y: -0.48}
+      - {x: 0.21875, y: -0.48}
+      - {x: 1, y: -0.16749999}
+      - {x: 1, y: 0.61375}
+      - {x: 0.1875, y: 1.02}
 --- !u!1 &3654658930131914190
 GameObject:
   m_ObjectHideFlags: 0
@@ -357,4 +391,6 @@ MonoBehaviour:
   height: 2
   width: 2
   cost: 10
+  buildingName: Laboratory
   playerClass: {fileID: 0}
+  infoText: 

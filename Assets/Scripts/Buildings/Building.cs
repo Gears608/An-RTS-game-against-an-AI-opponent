@@ -8,7 +8,15 @@ public class Building : MonoBehaviour
     public int width;
 
     public int cost;
+    public string buildingName;
 
     [SerializeField]
-    private PlayerClass playerClass;
+    public PlayerClass playerClass;
+
+    public string infoText;
+
+    public virtual bool EnableUnitMenu()
+    {
+        return false;
+    }
 }

@@ -12,7 +12,7 @@ public class UnitClass : MonoBehaviour
 
     public Rigidbody2D rb;
     [SerializeField]
-    private SpriteRenderer sprite;
+    private SpriteRenderer spriteRenderer;
 
     public bool floworint = false;
 
@@ -130,11 +130,11 @@ public class UnitClass : MonoBehaviour
         rb.AddForce(velocity * new Vector2(1, 0.5f), ForceMode2D.Force);
         if(rb.velocity.x > 0.1)
         {
-            sprite.flipX = false;
+            spriteRenderer.flipX = false;
         }
         else if (rb.velocity.x < -0.1f)
         {
-            sprite.flipX = true;
+            spriteRenderer.flipX = true;
         }
     }
 

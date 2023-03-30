@@ -23,6 +23,9 @@ public class WorldController : MonoBehaviour
 
     private Dictionary<(Component, Vector2Int), TileGrid<Vector2>> cachedFlowfields;
 
+    [SerializeField]
+    private PlayerClass playerClass;
+
     [SerializeField] private bool displayCost = false;
     [SerializeField] private bool showportals = false;
     [SerializeField] private bool showComponents = false;
@@ -330,10 +333,8 @@ public class WorldController : MonoBehaviour
     // a function which will calculate paths for a component
     private void CalculatePaths(Component component)
     {
-        //Debug.Log(component.portalNodes.Count);
         foreach(HierarchicalNode node in component.portalNodes)
         {
-            //Debug.Log(node.x +", "+node.y);
             TileGrid<int> integrationField = CreateIntegrationField(component, tileMap.GetWorldPositionFromIndex(node.x, node.y));
 
             foreach(HierarchicalNode node_ in component.portalNodes)
@@ -406,6 +407,7 @@ public class WorldController : MonoBehaviour
 
     public void RemoveNodeFromGraph(HierarchicalNode node)
     {
+        
         Component component = components.GetObject(tileMap.GetWorldPositionFromIndex(node.x, node.y));
         component.RemoveNode(node);
     }
@@ -452,7 +454,6 @@ public class WorldController : MonoBehaviour
                 }
             }
         }
-        //Debug.Log("cannot place");
         return true;
     }
 
@@ -461,9 +462,11 @@ public class WorldController : MonoBehaviour
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
         Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
 
-        Instantiate(buildingPrefab, gridPosition, buildingPrefab.transform.rotation);
+        GameObject buildingObject = Instantiate(buildingPrefab, gridPosition, buildingPrefab.transform.rotation);
 
-        Building building = buildingPrefab.GetComponent<Building>();
+        Building building = buildingObject.GetComponent<Building>();
+
+        building.playerClass = playerClass;
 
         List<Vector2Int> positions = new List<Vector2Int>();
         for (int x = 0; x < building.width; x++)
@@ -479,11 +482,58 @@ public class WorldController : MonoBehaviour
         UpdateNodes(positions);
     }
 
+    public void DestroyBuilding(Vector2 position)
+    {
+        if (!IsValidPosition(position))
+        {
+            return;
+        }
+
+        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
+
+        Collider2D buildingCollider = Physics2D.OverlapPoint(position);
+
+        if(buildingCollider == null)
+        {
+            return;
+        }
+
+        Building building = buildingCollider.gameObject.GetComponentInParent<Building>();
+
+        building.playerClass = playerClass;
+
+        List<Vector2Int> positions = new List<Vector2Int>();
+        for (int x = 0; x < building.width; x++)
+        {
+            for (int y = 0; y < building.height; y++)
+            {
+                Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
+                positions.Add(pos);
+                tileMap.GetObject(pos.x, pos.y).cost = 1;
+            }
+        }
+
+        if (buildingCollider != null)
+        {
+            if (buildingCollider.gameObject.tag == "PlayerBuilding")
+            {
+                Destroy(building.gameObject);
+            }
+        }
+
+        UpdateNodes(positions);
+    }
+
     public Vector2 WorldToGridPosition(Vector2 position)
     {
         Vector2Int index = tileMap.GetIndexFromWorldPosition(position);
         Vector2 output = tileMap.GetWorldPositionFromIndex(index.x, index.y);
         return output;
+    }
+
+    public bool IsValidPosition(Vector2 position)
+    {
+        return tileMap.IsValidPosition(position);
     }
 
 

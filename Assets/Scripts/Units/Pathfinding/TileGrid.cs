@@ -25,23 +25,16 @@ public class TileGrid<TTileType>
     //gets the world position of a given index
     public Vector2 GetWorldPositionFromIndex(int x, int y) 
     {
-        //return new Vector2(x * tileWidth, y * tileHeight) + startPosition;
         return new Vector2(((x * tileWidth - y * tileHeight) / 2f), (x * tileWidth  + y * tileHeight) / 4f) + startPosition;
     }
 
     //returns a vector2int containing the index within the grid from a given world position
     public Vector2Int GetIndexFromWorldPosition(Vector2 worldPosition)
     {
-        //Debug.Log("Checking: " + worldPosition);
-        //Debug.Log(worldPosition + " -= " + startPosition);
         worldPosition -= startPosition;
-        //Debug.Log("Relative: " + worldPosition);
         Vector2 x = new Vector2((2 * worldPosition.y + worldPosition.x), ((2 * worldPosition.y - worldPosition.x)));
-        //Debug.Log("Index: "+ x);
         x = new Vector2(x.x / tileWidth, x.y / tileHeight);
-        //Debug.Log("Scaled: "+x);
         Vector2Int output = new Vector2Int(Mathf.FloorToInt(x.x), Mathf.FloorToInt(x.y));
-        //Debug.Log(output);
         return output;
     }
 
@@ -70,7 +63,6 @@ public class TileGrid<TTileType>
         } 
         else
         {
-            //Debug.Log("Object out of range: " + x + ", " + y);
             return default(TTileType);
         }
     }
@@ -181,53 +173,51 @@ public class TileGrid<TTileType>
 
         if (up)
         {
-            //Debug.Log("Up added");
             neighbours.Add(new Vector2Int(x, y + 1));
 
             if(right && IsValid(x + 1, y + 1, ignore))
             {
-                //Debug.Log("Up-Right added");
                 neighbours.Add(new Vector2Int(x + 1, y + 1));
             }
         }
 
         if (right)
         {
-            //Debug.Log("Right added");
             neighbours.Add(new Vector2Int(x + 1, y));
 
             if(down && IsValid(x + 1, y - 1, ignore))
             {
-                //Debug.Log("right-down added");
                 neighbours.Add(new Vector2Int(x + 1, y - 1));
             }
         }
 
         if (down)
         {
-            //Debug.Log("down added");
             neighbours.Add(new Vector2Int(x, y - 1));
 
             if(left && IsValid(x - 1, y - 1, ignore))
             {
-                //Debug.Log("down-left added");
                 neighbours.Add(new Vector2Int(x - 1, y - 1));
             }
         }
 
         if (left)
         {
-            //Debug.Log("left added");
             neighbours.Add(new Vector2Int(x - 1, y));
 
             if(up && IsValid(x - 1, y + 1, ignore))
             {
-                //Debug.Log("left-up added");
                 neighbours.Add(new Vector2Int(x - 1, y + 1));
             }
         }
 
         return neighbours;
+    }
+
+    public bool IsValidPosition(Vector2 position)
+    {
+        Vector2Int index = GetIndexFromWorldPosition(position);
+        return index.x >= 0 && index.y >= 0 && index.x < width && index.y < height;
     }
 
     public bool IsValid(int x, int y, TTileType ignore)

@@ -15,7 +15,7 @@ public class PlayerClass : MonoBehaviour
     [SerializeField]
     private List<GameObject> selectedUnits = new List<GameObject>();  // initialises a list to hold all the currently selected units
     [SerializeField]
-    RectTransform selectionBox;  // initialises a variable to hold the visual prompt of the selection box
+    private RectTransform selectionBox;  // initialises a variable to hold the visual prompt of the selection box
     private Vector2 selectionBoxStartPos;  // initialises a variable which hold the starting position of the selection box
     [SerializeField]
     private WorldController worldController;
@@ -26,9 +26,12 @@ public class PlayerClass : MonoBehaviour
     private GameObject buildingVisual;
     [SerializeField]
     private GameObject buildingMenu;
-
     [SerializeField]
-    private int gold;
+    private PopupWindow popupWindow;
+    [SerializeField]
+    private GameObject unitMenu;
+
+    public int gold;
     [SerializeField]
     private TMP_Text goldDisplay;
 
@@ -98,13 +101,38 @@ public class PlayerClass : MonoBehaviour
         // on mouse up
         if (Input.GetMouseButtonUp(0))
         {
-            Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
-            foreach (Collider2D box in unitsInArea)
+            if (Vector3.Distance(selectionBoxStartPos, mousePos) < 0.1f)
             {
-                box.transform.Find("Selected").gameObject.SetActive(true);
-                selectedUnits.Add(box.gameObject);
+                Collider2D selection = Physics2D.OverlapPoint(mousePos);
+                if (selection != null)
+                {
+                    if (selection.gameObject.tag == "PlayerUnit")
+                    {
+                        selection.transform.Find("Selected").gameObject.SetActive(true);
+                        selectedUnits.Add(selection.gameObject);
+                    }
+                    else if (selection.gameObject.tag == "PlayerBuilding")
+                    {
+                        Building z = selection.GetComponentInParent<Building>();
+                        popupWindow.PopulateWindow(z.buildingName, z.infoText);
+                        if (z.EnableUnitMenu())
+                        {
+                            unitMenu.SetActive(true);
+                        }
+
+                    }
+                }
             }
-            selectionBox.gameObject.SetActive(false);
+            else
+            {
+                Collider2D[] unitsInArea = Physics2D.OverlapAreaAll(selectionBoxStartPos, mousePos, playerUnitMask);
+                foreach (Collider2D box in unitsInArea)
+                {
+                    box.transform.Find("Selected").gameObject.SetActive(true);
+                    selectedUnits.Add(box.gameObject);
+                }
+                selectionBox.gameObject.SetActive(false);
+            }
         }
 
         // while mouse held down
@@ -145,7 +173,6 @@ public class PlayerClass : MonoBehaviour
 
         if (buildingPrefab != null)
         {
-
             if (Input.GetMouseButtonDown(0))
             {
                 if (worldController.CheckBuildingPlacement(mousePos, buildingPrefab) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
@@ -166,15 +193,6 @@ public class PlayerClass : MonoBehaviour
                     Debug.Log("Cannot place here!");
                 }
             }
-            if (Input.GetMouseButtonDown(1))
-            {
-                Vector2Int o = worldController.tileMap.GetIndexFromWorldPosition(mousePos);
-                Collider2D[] y = Physics2D.OverlapCircleAll(worldController.tileMap.GetWorldPositionFromIndex(o.x, o.y) + new Vector2(0, 1 / 4f), 1 / 4f, LayerMask.GetMask("Impassable"), 1f, -1f);
-                foreach (Collider2D x in y)
-                {
-                    Debug.Log(y);
-                }
-            }
         }
     }
 
@@ -183,14 +201,7 @@ public class PlayerClass : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
             Vector3 mousePos = GetMousePositionInWorld();
-            Collider2D building = Physics2D.OverlapPoint(mousePos);
-            if(building != null)
-            {
-                if(building.gameObject.tag == "PlayerBuilding")
-                {
-                    Destroy(building.gameObject);
-                }
-            }
+            worldController.DestroyBuilding(mousePos);
         }
     }
 
@@ -226,9 +237,11 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
-    private void DisableUI()
+    public void DisableUI()
     {
         selectionBox.gameObject.SetActive(false);
+        unitMenu.SetActive(false);
+        popupWindow.gameObject.SetActive(false);
         buildingVisual.SetActive(false);
         buildingMenu.SetActive(false);
         buildingPrefab = null;
@@ -249,64 +262,67 @@ public class PlayerClass : MonoBehaviour
 
     private void FindPaths()
     {
-        GameObject flockController = new GameObject("Flock");
-        Flock flock = flockController.AddComponent<Flock>();
-        List<HierarchicalNode> path = null;
         Vector2 mousePos = GetMousePositionInWorld();
-
-        HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
-
-        while (path == null && selectedUnits.Count > 0)
+        //checks if there are units selected and the position is valid
+        if (selectedUnits.Count > 0 && worldController.IsValidPosition(mousePos))
         {
-            //if destination is unreachable
-            if (destinationNode == null) 
-            {
-                selectedUnits.Clear();
-                continue;
-            }
+            GameObject flockController = new GameObject("Flock");
+            Flock flock = flockController.AddComponent<Flock>();
+            List<HierarchicalNode> path = null;
+            HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
 
-            path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
-
-            //if no path is found
-            if(path == null)
+            while (path == null && selectedUnits.Count > 0)
             {
-                removeSelectedUnit(selectedUnits[0]);
-            }
-            else
-            {
-                selectedUnits[0].GetComponent<UnitClass>().SetPath(path, flock, mousePos);
-
-                for (int i = 1; i < selectedUnits.Count; i++)
+                //if destination is unreachable
+                if (destinationNode == null)
                 {
-                    List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
-                    if (mergingPath == null)
+                    selectedUnits.Clear();
+                    continue;
+                }
+
+                path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
+
+                //if no path is found
+                if (path == null)
+                {
+                    removeSelectedUnit(selectedUnits[0]);
+                }
+                else
+                {
+                    selectedUnits[0].GetComponent<UnitClass>().SetPath(path, flock, mousePos);
+
+                    for (int i = 1; i < selectedUnits.Count; i++)
                     {
-                        removeSelectedUnit(selectedUnits[i]);
-                    }
-                    else
-                    {
-                        //Debug.Log(mergingPath.Count);
-                        selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
+                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
+                        if (mergingPath == null)
+                        {
+                            removeSelectedUnit(selectedUnits[i]);
+                        }
+                        else
+                        {
+                            //Debug.Log(mergingPath.Count);
+                            selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
+                        }
                     }
                 }
             }
-        }
 
-        worldController.RemoveNodeFromGraph(destinationNode);
+            worldController.RemoveNodeFromGraph(destinationNode);
 
-        List<UnitClass> units = new List<UnitClass>();
-        foreach (GameObject unit in selectedUnits)
-        {
-            units.Add(unit.GetComponent<UnitClass>());
-        }
+            List<UnitClass> units = new List<UnitClass>();
+            foreach (GameObject unit in selectedUnits)
+            {
+                units.Add(unit.GetComponent<UnitClass>());
+            }
 
-        if (units.Count > 0)
-        {
-            flockController.GetComponent<Flock>().flock = units;
-        }
-        else
-        {
-            Destroy(flockController);
+            if (units.Count > 0)
+            {
+                flockController.GetComponent<Flock>().flock = units;
+            }
+            else
+            {
+                Destroy(flockController);
+            }
         }
     }
 }
