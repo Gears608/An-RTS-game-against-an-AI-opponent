@@ -10,7 +10,9 @@ public class TileGrid<TTileType>
     private Vector2 startPosition;
     public TTileType[,] tileArray;
 
-    //constructor for a tile object
+    /*
+     * Constructs a new TileGrid object
+     */
     public TileGrid(int width, int height, float tileHeight, float tileWidth, Vector2 startPosition)
     {
         this.width = width;
@@ -22,13 +24,26 @@ public class TileGrid<TTileType>
         tileArray = new TTileType[width, height];
     }
 
-    //gets the world position of a given index
+    /*
+     * A function to return the world position of a grid cell given the index of the cell
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * 
+     * Returns a Vector2 which is the world position of the index
+     */
     public Vector2 GetWorldPositionFromIndex(int x, int y) 
     {
         return new Vector2(((x * tileWidth - y * tileHeight) / 2f), (x * tileWidth  + y * tileHeight) / 4f) + startPosition;
     }
 
-    //returns a vector2int containing the index within the grid from a given world position
+    /*
+     * A function to return the index of a grid cell given the world position of the cell
+     * 
+     * Vector2 worldPosition - the world position to be converted
+     * 
+     * Returns a Vector2Int which is the index of the cell
+     */
     public Vector2Int GetIndexFromWorldPosition(Vector2 worldPosition)
     {
         worldPosition -= startPosition;
@@ -38,7 +53,13 @@ public class TileGrid<TTileType>
         return output;
     }
 
-    //sets the value based on an index
+    /*
+     * A function which inserts a given value into a cell at a given index
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * TTileType value - the value to be inserted
+     */
     public void SetObject(int x, int y, TTileType value)
     {
         if(x >= 0 && y >= 0 && x < width && y < height)
@@ -47,14 +68,26 @@ public class TileGrid<TTileType>
         }
     }
 
-    //sets the value given a world position
+    /*
+     * A function which inserts a given value into a cell at a given world position
+     * 
+     * Vector2 worldPosition - the world position of the cell
+     * TTileType value - the value to be inserted
+     */
     public void SetObject(Vector2 worldPosition, TTileType value)
     {
         Vector2Int index = GetIndexFromWorldPosition(worldPosition);
         SetObject(index.x, index.y, value);
     }
 
-    //gets a value in the tile from a given index
+    /*
+     * A function which gets the value of a cell at a given index
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * 
+     * Returns a TTileType which is the value of the cell
+     */
     public TTileType GetObject(int x, int y)
     {
         if (x >= 0 && y >= 0 && x < width && y < height)
@@ -67,31 +100,57 @@ public class TileGrid<TTileType>
         }
     }
 
-    //gets the value from a given world position
+    /*
+     * A function which gets the value of a cell at a given world position
+     * 
+     * Vector2 worldPosition - the world position of the cell
+     * 
+     * Returns a TTileType which is the value of the cell
+     */
     public TTileType GetObject(Vector2 worldPositon)
     {
         Vector2Int index = GetIndexFromWorldPosition(worldPositon);
         return GetObject(index.x, index.y);
     }
 
-    //returns the height of the tile
+    /*
+     * A function which returns the height of the grid
+     * 
+     * Returns an int which is the height of the grid
+     */
     public int GetTileHeight()
     {
         return height;
     }
 
-    //returns the width of the tile
+    /*
+     * A function which returns the width of the grid
+     * 
+     * Returns an int which is the width of the grid
+     */
     public int GetTileWidth()
     {
         return width;
     }
 
+    /*
+     * A function which returns starting position of the grid
+     * 
+     * Returns a Vector2 which is the starting position/origin of the grid
+     */
     public Vector2 GetStartPosition()
     {
         return startPosition;
     }
 
-    //returns the objects surrounding the given index
+    /*
+     * A function which returns the indexs of all the neighbours of a given index
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * 
+     * Returns a List<Vector2Int> which is a list containing all the indexs of neighbouring cell
+     */
     public List<Vector2Int> GetNeighbours(int x, int y)
     {
         List<Vector2Int> neighbours = new List<Vector2Int>();
@@ -135,6 +194,14 @@ public class TileGrid<TTileType>
         return neighbours;
     }
 
+    /*
+     * A function which returns the indexs of all the cardinally neighboured cells of a given index
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * 
+     * Returns a List<Vector2Int> which is a list containing all the indexs of neighbouring cell
+     */
     public List<Vector2Int> GetCardinalNeighbours(int x, int y)
     {
         List<Vector2Int> neighbours = new List<Vector2Int>();
@@ -162,6 +229,15 @@ public class TileGrid<TTileType>
         return neighbours;
     }
 
+    /*
+     * A function which returns the indexs of all the neighbours of a given index excluding a certain value
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * TTileType ignore - the value to ignore
+     * 
+     * Returns a List<Vector2Int> which is a list containing all the indexs of neighbouring cell
+     */
     public List<Vector2Int> GetNeighbours(int x, int y, TTileType ignore)
     {
         List<Vector2Int> neighbours = new List<Vector2Int>();
@@ -214,12 +290,28 @@ public class TileGrid<TTileType>
         return neighbours;
     }
 
+    /*
+     * A function which checks if a given world position is a valid position in the tile grid
+     * 
+     * Vector2 position - the position to check
+     * 
+     * Returns true if valid or false if invalid
+     */
     public bool IsValidPosition(Vector2 position)
     {
         Vector2Int index = GetIndexFromWorldPosition(position);
         return index.x >= 0 && index.y >= 0 && index.x < width && index.y < height;
     }
 
+    /*
+     * A function which checks if a given index is a valid index on the tile grid
+     * 
+     * int x - the x index of the cell
+     * int y - the y index of the cell
+     * TTileType ignore - a value to ignore
+     * 
+     * Returns true if valid or false if invalid
+     */
     public bool IsValid(int x, int y, TTileType ignore)
     {
         return x >= 0 && y >= 0 && x < width && y < height && !EqualityComparer<TTileType>.Default.Equals(GetObject(x, y), ignore);

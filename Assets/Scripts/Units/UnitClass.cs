@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-public class UnitClass : MonoBehaviour
+public class UnitClass : DestroyableEntity
 {
-    public WorldController worldController;
-
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
 
@@ -28,13 +26,20 @@ public class UnitClass : MonoBehaviour
     public float seperationRadius = 3;
     public float radius = 0.5f;
 
-    private void Start()
+    public int cost;
+
+    protected override void Start()
     {
+        base.Start();
+        worldController.AddUnit(this);
         moving = false;
         hierarchicalPath = new Stack<HierarchicalNode>();
         rb = GetComponent<Rigidbody2D>();
     }
 
+    /*
+     * A function which halts the moving process and clears the path of the unit
+    */
     public void StopMoving()
     {
         moving = false;
@@ -44,6 +49,13 @@ public class UnitClass : MonoBehaviour
         worldController.AlertNeighbours(this);
     }
 
+    /*
+     * A function which sets the current path of the unit
+     * 
+     *  List<HierarchicalNode> hierarchicalPath - the path to be followed
+     *  Flock flock - the flock of other units heading to the destination
+     *  Vector2 destination - the destination point
+    */
     public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
     {
         if (Selection.Contains(gameObject))
@@ -80,10 +92,19 @@ public class UnitClass : MonoBehaviour
         currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
     }
 
+    protected override void Update()
+    {
+        if(health == 0)
+        {
+            worldController.RemoveUnit(this);
+        }
+        base.Update();
+        CheckPath();
+    }
+
 
     public void FixedUpdate()
     {
-        CheckPath();
         
         Vector2 flowSteer = new Vector2();
         Vector2 cohesionSteer = new Vector2();
@@ -96,7 +117,7 @@ public class UnitClass : MonoBehaviour
             if (flock != null)
             {
                 cohesionSteer = SeekingSteering(flock.CohesionSteering(this));
-                alignmentSteer = Steer(flock.AlignmentSteering(this));
+                alignmentSteer = (flock.AlignmentSteering(this));
             }
             seperationSteer = worldController.GetSeperation(this);
         }
@@ -107,27 +128,26 @@ public class UnitClass : MonoBehaviour
 
 
         //Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer * 0.05f, Color.yellow);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer * 0.3f, Color.green);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer * 1.2f, Color.black);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer, Color.yellow);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer, Color.green);
+        Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer, Color.black);
 
-        Vector2 velocity = flowSteer + (cohesionSteer * 0.1f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
+        Vector2 direction = flowSteer + (cohesionSteer * 0.1f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
 
-        if (velocity.magnitude > maxForce)
+        Vector2 desiredVelocity = direction * 5;
+
+        if (desiredVelocity.magnitude > maxSpeed)
         {
-            velocity = velocity.normalized * maxForce;
+            desiredVelocity = direction.normalized * 5;
         }
 
-        //velocity += rb.velocity;
+        rb.AddForce(desiredVelocity);
 
-        if(velocity.magnitude > maxSpeed)
+        if(rb.velocity.magnitude > maxSpeed)
         {
-            velocity = velocity * (maxForce / velocity.magnitude);
+            rb.velocity = rb.velocity.normalized * maxSpeed;
         }
 
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + velocity, Color.red);
-
-        rb.AddForce(velocity * new Vector2(1, 0.5f), ForceMode2D.Force);
         if(rb.velocity.x > 0.1)
         {
             spriteRenderer.flipX = false;
@@ -138,6 +158,10 @@ public class UnitClass : MonoBehaviour
         }
     }
 
+
+    /*
+     * A function which checks the validity of the current path
+    */
     private void CheckPath()
     {
         //pathfinding
@@ -175,7 +199,11 @@ public class UnitClass : MonoBehaviour
     }
 
 
-    //returns a 
+    /*
+     * A function which returns a Vector2 direction which points in the direction that the flowfield is pointing
+     * 
+     *  Returns a Vector2 direction
+    */
     public Vector2 FlowFieldSteering()
     {
         //movement
@@ -208,7 +236,7 @@ public class UnitClass : MonoBehaviour
                 else
                 {
                     flow.Normalize();
-                    return Steer(flow);
+                    return (flow);
                 }
             }
         }
@@ -217,11 +245,12 @@ public class UnitClass : MonoBehaviour
     }
 
     /*
-     * a function to get the force to be applied to the unit to grant the change in velocity required to steer the object towards the given destination
+     * A function which returns a Vector2 direction pointing at a given destination from an origin point of the current position
      * 
-     * Vector2 destination - the point to be seeked
-     * 
-     */
+     *  Vector2 destination - the vector of the destination to point towards
+     *  
+     *  Returns a normalised vector2 as the direction 
+    */
     private Vector2 SeekingSteering(Vector2 destination)
     {
         Vector2 seekForce = destination - (Vector2)transform.position;
@@ -229,16 +258,7 @@ public class UnitClass : MonoBehaviour
         {
             return Vector2.zero;
         }
-        seekForce *= maxSpeed / seekForce.magnitude;
-        seekForce -= rb.velocity;
-        return seekForce * (maxForce / maxSpeed);
-    }
-
-    private Vector2 Steer(Vector2 direction)
-    {
-        Vector2 velocity = direction * maxSpeed;
-        velocity -= rb.velocity;
-        return velocity * (maxForce / maxSpeed);
+        return seekForce.normalized;
     }
 
     private void OnDrawGizmosSelected()

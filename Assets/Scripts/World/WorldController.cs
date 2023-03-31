@@ -95,12 +95,19 @@ public class WorldController : MonoBehaviour
         Debug.Log("Paths Initialized.");
     }
 
+    #region WorldRepresentation
+
     /*
      * 
      *  World Representation
      * 
      */
 
+    /*
+     * A function which updates the node graph and components based on a changed tile at a position
+     * 
+     *  Vector2 position - the position of the changed tile
+    */
     public void UpdateNodes(Vector2 position)
     {
         Component component = components.GetObject(position);
@@ -147,6 +154,11 @@ public class WorldController : MonoBehaviour
         CalculatePaths(component);
     }
 
+    /*
+     * A function which updates the node graph and components based on a list of updated tiles
+     * 
+     *  List<Vector2Int> positionsAsIndex - the indexes of the changed tiles
+    */
     public void UpdateNodes(List<Vector2Int> positionsAsIndex)
     {
         int maxY = positionsAsIndex[0].y;
@@ -226,7 +238,11 @@ public class WorldController : MonoBehaviour
         }
     }
 
-    //a method which sets nodes as walkable or not
+    /*
+     * A function which checks all the tiles in a given component and updates their costs
+     * 
+     *  Component component - the component to check the nodes of 
+    */
     public void UpdateComponent(Component component)
     {
         Debug.Log("updating component: "+component.indexX+", "+ component.indexY);
@@ -247,7 +263,13 @@ public class WorldController : MonoBehaviour
         }
     }
 
-    //checks a vertical line of a component
+    /*
+     * A function which checks a vertical edge of a component and adds nodes at the midpoint of spaces
+     * 
+     *  Component component - the component to check the edge of
+     *  Vector2Int startPosIndex - the starting position of the edge
+     *  int xModifier - the modifier to the x index of the neighbouring component
+    */
     private void CheckVertical(Component component, Vector2Int startPosIndex, int xModifier)
     {
         int length = 0;
@@ -288,8 +310,13 @@ public class WorldController : MonoBehaviour
             neighbourHNode.component.AddNode(neighbourHNode);
         }
     }
-
-    //checks a horizontal line of a component
+    /*
+     * A function which checks a horizontal edge of a component and adds nodes at the midpoint of spaces
+     * 
+     *  Component component - the component to check the edge of
+     *  Vector2Int startPosIndex - the starting position of the edge
+     *  int yModifier - the modifier to the y index of the neighbouring component
+    */
     private void CheckHorizontal(Component component, Vector2Int startPosIndex, int yModifier)
     {
         int length = 0;
@@ -331,6 +358,12 @@ public class WorldController : MonoBehaviour
     }
 
     // a function which will calculate paths for a component
+
+    /*
+     * A function which will calculate all internal paths on a given component
+     * 
+     *  Component component - the component to calculate paths for
+    */
     private void CalculatePaths(Component component)
     {
         foreach(HierarchicalNode node in component.portalNodes)
@@ -356,17 +389,35 @@ public class WorldController : MonoBehaviour
         }
     }
 
+    /*
+     * A function which returns a node at a given position
+     * 
+     *  Vector2 position - the position of the node to find
+     *  
+     *  Returns the Node at the position or null
+    */
     public Node GetNode(Vector2 position)
     {
         return tileMap.GetObject(position);
     }
 
+    /*
+     * A function which returns a component at a given position
+     * 
+     *  Vector2 position - the position of the component to find
+     *  
+     *  Returns the Component at the position or null
+    */
     public Component GetComponent(Vector2 position) 
     {
         return components.GetObject(position);
     }
 
-    // a function which will clear all the paths on a component
+    /*
+     * A function which will clear all the internal paths of a component; this includes any path which connects two nodes on the given component
+     * 
+     *  Component component - the component to remove paths from
+    */
     private void ClearInternalPaths(Component component)
     {
         foreach (HierarchicalNode node in component.portalNodes)
@@ -378,7 +429,13 @@ public class WorldController : MonoBehaviour
         }
     }
 
-
+    /*
+     * A function which adds a new node to the node graph at a given position and returns it
+     * 
+     *  Vector2 position - the position of the new node
+     *  
+     *  Returns a HierarchicalNode - the newly added graph node
+    */
     public HierarchicalNode AddNodeToGraph(Vector2 position)
     {
         Component component = components.GetObject(position);
@@ -405,6 +462,11 @@ public class WorldController : MonoBehaviour
         return newNode;
     }
 
+    /*
+     * A function which removes a node from the node graph
+     * 
+     *  HierarchicalNode node - the node to be removed
+    */
     public void RemoveNodeFromGraph(HierarchicalNode node)
     {
         
@@ -412,6 +474,12 @@ public class WorldController : MonoBehaviour
         component.RemoveNode(node);
     }
 
+    /*
+     * A function which removes nodes connecting two given components
+     * 
+     *  Component component1 - the first component
+     *  Component component2 - the second component
+    */
     public void RemoveConnectingNodes(Component component1, Component component2)
     {
         List<HierarchicalNode> nodesToRemove = new List<HierarchicalNode>();
@@ -433,6 +501,42 @@ public class WorldController : MonoBehaviour
         }
     }
 
+    /*
+     * A function which takes a position and converts it to the origin of the grid square the position is within
+     * 
+     *  Vector2 position - the position to be converted
+     *  
+     *  Returns a Vector2 which is the new position
+    */
+    public Vector2 WorldToGridPosition(Vector2 position)
+    {
+        Vector2Int index = tileMap.GetIndexFromWorldPosition(position);
+        Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(index.x, index.y);
+        return gridPosition;
+    }
+
+    /*
+     *  A function which finds out if a position is a valid position in the world space
+     *  
+     *  Vector2 position - the position to check
+    */
+    public bool IsValidPosition(Vector2 position)
+    {
+        return tileMap.IsValidPosition(position);
+    }
+
+    #endregion
+
+    #region Building
+
+    /*
+     * A function which checks if a given position can accomodate a given building
+     * 
+     *  Vector2 position - the position to place the building at
+     *  GameObjet buildingPrefab - the prefab of the building
+     *  
+     *  Returns bool if the placement is valid or not
+    */
     public bool CheckBuildingPlacement(Vector2 position, GameObject buildingPrefab)
     {
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
@@ -457,7 +561,13 @@ public class WorldController : MonoBehaviour
         return true;
     }
 
-    public void PlaceBuilding(Vector2 position, GameObject buildingPrefab)
+    /*
+     * A function which places a building at a given position
+     * 
+     *  Vector2 position - the position to place the building at
+     *  GameObject buildingPrefab - the prefab of the building to be placed
+    */
+    public void PlaceBuilding(Vector2 position, GameObject buildingPrefab, PlayerClass owner)
     {
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
         Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
@@ -466,7 +576,7 @@ public class WorldController : MonoBehaviour
 
         Building building = buildingObject.GetComponent<Building>();
 
-        building.playerClass = playerClass;
+        building.owner = owner;
 
         List<Vector2Int> positions = new List<Vector2Int>();
         for (int x = 0; x < building.width; x++)
@@ -482,8 +592,14 @@ public class WorldController : MonoBehaviour
         UpdateNodes(positions);
     }
 
+    /*
+     * A function which destroys a building at a given position
+     * 
+     *  Vector2 position - the position of the building
+    */
     public void DestroyBuilding(Vector2 position)
     {
+        //checks the position is in the world space
         if (!IsValidPosition(position))
         {
             return;
@@ -492,7 +608,7 @@ public class WorldController : MonoBehaviour
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
 
         Collider2D buildingCollider = Physics2D.OverlapPoint(position);
-
+        //checks that there is a collision
         if(buildingCollider == null)
         {
             return;
@@ -500,8 +616,7 @@ public class WorldController : MonoBehaviour
 
         Building building = buildingCollider.gameObject.GetComponentInParent<Building>();
 
-        building.playerClass = playerClass;
-
+        //gets the positions of grid spaces the building occupies
         List<Vector2Int> positions = new List<Vector2Int>();
         for (int x = 0; x < building.width; x++)
         {
@@ -512,30 +627,18 @@ public class WorldController : MonoBehaviour
                 tileMap.GetObject(pos.x, pos.y).cost = 1;
             }
         }
-
-        if (buildingCollider != null)
+        if (buildingCollider.gameObject.tag == "PlayerBuilding")
         {
-            if (buildingCollider.gameObject.tag == "PlayerBuilding")
-            {
-                Destroy(building.gameObject);
-            }
+            //destroys the building
+            Destroy(building.gameObject);
         }
-
+        //updates the node graph
         UpdateNodes(positions);
     }
 
-    public Vector2 WorldToGridPosition(Vector2 position)
-    {
-        Vector2Int index = tileMap.GetIndexFromWorldPosition(position);
-        Vector2 output = tileMap.GetWorldPositionFromIndex(index.x, index.y);
-        return output;
-    }
+    #endregion
 
-    public bool IsValidPosition(Vector2 position)
-    {
-        return tileMap.IsValidPosition(position);
-    }
-
+    #region Pathfinding
 
     /*
      * 
@@ -544,7 +647,16 @@ public class WorldController : MonoBehaviour
      */
 
 
-    // a function to find a high level path between 2 points
+
+    /*
+     *  A function which finds an a* path over the hierarchical nodes in the world
+     *  
+     *  Vector2 startPos - the starting position of the path
+     *  HierarchicalNode destinationNode - the destination as a given node in the node graph
+     *  
+     *  Returns a list of hierarchical nodes if a path is found
+     *  Returns null if no path is found
+    */
     public List<HierarchicalNode> FindHierarchicalPath(Vector2 startPos, HierarchicalNode destinationNode)
     {
         //an open and closed list to hold the nodes to be searched
@@ -626,6 +738,16 @@ public class WorldController : MonoBehaviour
         return null;
     }
 
+    /*
+     *  A function which finds a 'merging' a* path over the hierarchical nodes in the world
+     *  
+     *  Vector2 startPos - the starting position of the path
+     *  HierarchicalNode destinationNode - the destination as a given node in the node graph
+     *  List<HierarchicalNode> path - the existing path to merge with
+     *  
+     *  Returns a list of hierarchical nodes if a path is found
+     *  Returns null if no path is found
+    */
     public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, HierarchicalNode destinationNode, List<HierarchicalNode> path)
     {
 
@@ -720,7 +842,17 @@ public class WorldController : MonoBehaviour
         return null;
     }
 
-    public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, Vector2 destinationPosition, List<HierarchicalNode> path)
+    /*
+     *  A function which finds a 'merging' a* path over the hierarchical nodes in the world
+     *  
+     *  Vector2 startPos - the starting position of the path
+     *  Vector2 destinationPos - the destination position of the path
+     *  List<HierarchicalNode> path - the existing path to merge with
+     *  
+     *  Returns a list of hierarchical nodes if a path is found
+     *  Returns null if no path is found
+    */
+    public List<HierarchicalNode> FindHierarchicalPathMerging(Vector2 startPos, Vector2 destinationPos, List<HierarchicalNode> path)
     {
 
         //finds the nodes accessible to the unit
@@ -747,14 +879,14 @@ public class WorldController : MonoBehaviour
             if (weight != -1)
             {
                 node.g = weight;
-                node.h = CalculateH(new Vector2(node.x, node.y), destinationPosition);
+                node.h = CalculateH(new Vector2(node.x, node.y), destinationPos);
                 node.CalculateF();
                 node.previousNode = null;
                 openList.Add(node);
             }
         }
 
-        HierarchicalNode destinationNode = AddNodeToGraph(destinationPosition);
+        HierarchicalNode destinationNode = AddNodeToGraph(destinationPos);
         Debug.Log("Temp destination added: "+destinationNode.x +", "+destinationNode.y);
 
         while (openList.Count > 0)
@@ -818,7 +950,7 @@ public class WorldController : MonoBehaviour
                     else
                     {
                         neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
-                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destinationPosition);
+                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destinationPos);
                         neighbour.CalculateF();
                         neighbour.previousNode = currentNode;
                         openList.Add(neighbour);
@@ -835,7 +967,14 @@ public class WorldController : MonoBehaviour
         return null;
     }
 
-    // a functtion to create an integration field
+    /*
+     *  A function which creates an integgration field, given a source component and a destination point
+     *  
+     *  Component component - the source component
+     *  Vector2 destination - the destination point
+     *  
+     *  retuns a TileGrid<int> which represents each position as the sum of all the costs of tiles between it and the destination
+    */
     private TileGrid<int> CreateIntegrationField(Component component, Vector2 destination)
     {
         //gets the component of the destination
@@ -917,9 +1056,11 @@ public class WorldController : MonoBehaviour
     }
 
     /*
-     *  A function which converts a TileGrid of ints to a TileGrid of Vector2s where they each point at their lowest cost neighnour
+     *  A function which converts a TileGrid of ints to a TileGrid of Vector2s where they each point at their lowest cost neighbour
      *  
      *  TileGrid<int> integrationField - the integration field to be converted
+     *  
+     *  Returns a TileGrid<Vector2> in which each tile in the grid is a Vector2 which points in the direction of the route to the destination
     */
     private TileGrid<Vector2> CreateFlowField(TileGrid<int> integrationField)
     {
@@ -971,6 +1112,8 @@ public class WorldController : MonoBehaviour
      *  
      *  Vector2 source - the source position
      *  Vector2Int destination - the destination index 
+     *  
+     *  Returns a TileGrid<Vector2> in which each tile in the grid is a Vector2 which points in the direction of the route to the destination
     */
     public TileGrid<Vector2> GetFlowField(Vector2 source, Vector2Int destination)
     {
@@ -1002,6 +1145,8 @@ public class WorldController : MonoBehaviour
      * 
      *  Vector2 source - the first position
      *  Vector2 destination - the second position
+     *  
+     *  Returns an int which is H cost between the two positions
     */
     private int CalculateH(Vector2 source, Vector2 destination)
     {
@@ -1009,12 +1154,24 @@ public class WorldController : MonoBehaviour
         return Mathf.FloorToInt(Mathf.Abs(source.x - destination.x)) + Mathf.FloorToInt(Mathf.Abs(source.y - destination.y)/2f);
     }
 
+    #endregion
+
+    #region Flocking
+
     /*
      * 
      * Flocking 
      * 
      */
 
+
+    /*
+     * A function which calculates the direction a given unit should move to be at distance from nearby units
+     * 
+     *  UnitClass unit - the unit in question
+     *  
+     *  Returns a Vector2 which is the direction of movement
+    */
     public Vector2 GetSeperation(UnitClass unit)
     {
         Vector2 position = unit.transform.position;
@@ -1024,6 +1181,7 @@ public class WorldController : MonoBehaviour
         foreach (UnitClass other in allUnits)
         {
             Vector2 currentForce = position - (Vector2)other.transform.position;
+            //checks if the unit is within the nearby radius
             if (new Vector2(currentForce.x, currentForce.y * 2f).magnitude < unit.seperationRadius)
             {
                 nearby++;
@@ -1035,29 +1193,57 @@ public class WorldController : MonoBehaviour
             }
         }
 
+        //if there are no nearby units
         if(nearby == 0)
         {
             return Vector2.zero;
         }
 
-        return totalForce * (unit.maxForce / nearby);
+        return totalForce.normalized;
     }
 
+    /*
+     * A function which alerts all nearby units to stop moving
+     * 
+     *  UnitClass unit - the unit in question
+    */
     public void AlertNeighbours(UnitClass unit)
     {
         Vector2 position = unit.transform.position;
 
         foreach (UnitClass other in allUnits)
         {
-            Vector2 currentForce = position - (Vector2)other.transform.position;
-            if (new Vector2(currentForce.x, currentForce.y * 2f).magnitude < unit.seperationRadius && other.moving == true && unit.flock == other.flock)
+            Vector2 displacement = position - (Vector2)other.transform.position;
+            if (new Vector2(displacement.x, displacement.y * 2f).magnitude < unit.seperationRadius && other.moving == true && unit.flock == other.flock)
             {
                 other.StopMoving();
             }
         }
     }
 
+    /*
+     * A function which adds a unit to the allUnits list
+     * 
+     *  UnitClass unit - the unit in question
+    */
+    public void AddUnit(UnitClass unit)
+    {
+        allUnits.Add(unit);
+    }
 
+    /*
+     * A function which removes a unit from the allUnits list
+     * 
+     *  UnitClass unit - the unit in question
+    */
+    public void RemoveUnit(UnitClass unit)
+    {
+        allUnits.Remove(unit);
+    }
+
+    #endregion
+
+    #region Debug
     /*
      * 
      * Debug
@@ -1139,4 +1325,5 @@ public class WorldController : MonoBehaviour
             }
         }
     }
+    #endregion
 }

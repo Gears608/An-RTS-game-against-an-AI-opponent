@@ -13,6 +13,9 @@ public class CameraController : MonoBehaviour
         Move();
     }
 
+    /*
+     * A function which handles the movement of the camera
+     */
     private void Move()
     {
         Vector2 movement = new Vector2(0, 0);

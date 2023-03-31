@@ -6,6 +6,7 @@ TagManager:
   tags:
   - PlayerUnit
   - PlayerBuilding
+  - EnemyUnit
   layers:
   - Default
   - TransparentFX
@@ -14,7 +15,7 @@ TagManager:
   - Water
   - UI
   - PlayerUnit
-  - 
+  - EnemyUnit
   - 
   - Impassable
   - 

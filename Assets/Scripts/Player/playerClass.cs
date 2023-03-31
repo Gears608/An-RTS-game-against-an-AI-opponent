@@ -35,6 +35,8 @@ public class PlayerClass : MonoBehaviour
     [SerializeField]
     private TMP_Text goldDisplay;
 
+    private Vector2 spawnPoint;
+
     void Start()
     {
         playerCam = Camera.main;  // gets the main camera
@@ -66,7 +68,11 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
-    // returns the current position of the mouse cursor on the world map
+    /*
+     * A function which gets the current mouse position and converts it to a world position
+     *
+     * Returns a Vector3 world position of the cursor
+     */
     private Vector3 GetMousePositionInWorld()
     {
         Vector3 mousePos = Input.mousePosition;
@@ -77,11 +83,13 @@ public class PlayerClass : MonoBehaviour
 
     /*
      * 
-     *  Unit Selection Functions
+     *  Unit Management Functions
      * 
      */
 
-    // for selecting and deselecting units
+    /*
+     * A function which handles the selection process for units.
+     */
     private void UnitSelection()
     {
         Vector3 mousePos = GetMousePositionInWorld();
@@ -115,9 +123,10 @@ public class PlayerClass : MonoBehaviour
                     {
                         Building z = selection.GetComponentInParent<Building>();
                         popupWindow.PopulateWindow(z.buildingName, z.infoText);
-                        if (z.EnableUnitMenu())
+                        if (z.enableUnitMenu)
                         {
                             unitMenu.SetActive(true);
+                            spawnPoint = selection.ClosestPoint(mousePos);
                         }
 
                     }
@@ -142,8 +151,12 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
-    // draws the selection box
-    void selectionBoxUpdate(Vector2 newMousePos)
+    /*
+     * A function which updates the size of the selection box visual based on the users new cursor position
+     * 
+     * Vector2 newMousePos - the new mouse position
+     */
+    private void selectionBoxUpdate(Vector2 newMousePos)
     {
         if (!selectionBox.gameObject.activeSelf)
         {
@@ -156,7 +169,12 @@ public class PlayerClass : MonoBehaviour
         selectionBox.sizeDelta = new Vector2(Mathf.Abs(width), Mathf.Abs(height));
     }
 
-    void removeSelectedUnit(GameObject unit)
+    /*
+     * A function which removes a unit from the selected units list
+     * 
+     * GameObject unit - the unit to remove
+     */
+    private void removeSelectedUnit(GameObject unit)
     {
         unit.transform.Find("Selected").gameObject.SetActive(false);
         selectedUnits.Remove(unit);
@@ -166,6 +184,9 @@ public class PlayerClass : MonoBehaviour
      * Building
      */
 
+    /*
+     * A function which handles the building mode
+     */
     private void BuildingLoop()
     {
         Vector3 mousePos = GetMousePositionInWorld();
@@ -180,7 +201,7 @@ public class PlayerClass : MonoBehaviour
                     int cost = buildingPrefab.GetComponent<Building>().cost;
                     if (gold >= cost)
                     {
-                        worldController.PlaceBuilding(mousePos, buildingPrefab);
+                        worldController.PlaceBuilding(mousePos, buildingPrefab, this);
                         gold -= cost;
                     }
                     else
@@ -196,6 +217,9 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
+    /*
+     * A function which handles the destroying mode
+     */
     private void DestroyLoop()
     {
         if (Input.GetMouseButtonDown(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
@@ -209,6 +233,9 @@ public class PlayerClass : MonoBehaviour
      * UI
      */
 
+    /*
+     * A function which changes the users current mode to building mode if not currently in building mode, or managing if the user is currently in building mode
+     */
     public void ChangeBuildingMode()
     {
         if (mode != Modes.Building)
@@ -224,6 +251,9 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
+    /*
+     * A function which changes the users current mode to destroying mode if not currently in building mode, or managing if the user is currently in destroying mode
+     */
     public void ChangeDestroyMode()
     {
         if (mode != Modes.Destroying)
@@ -237,6 +267,9 @@ public class PlayerClass : MonoBehaviour
         }
     }
 
+    /*
+     * A function which clears all optional UI elements
+     */
     public void DisableUI()
     {
         selectionBox.gameObject.SetActive(false);
@@ -247,6 +280,11 @@ public class PlayerClass : MonoBehaviour
         buildingPrefab = null;
     }
 
+    /*
+     * A function which sets the current building prefab of the player
+     * 
+     * GameObject buildingPrefab - the prefab of the gameobject to be set to
+     */
     public void SetBuildingPrefab(GameObject buildingPrefab)
     {
         buildingVisual.GetComponent<SpriteRenderer>().sprite = buildingPrefab.GetComponentInChildren<SpriteRenderer>().sprite;
@@ -255,11 +293,31 @@ public class PlayerClass : MonoBehaviour
     }
 
     /*
+     * A function which buys a unit and spawns them into the world
+     * 
+     * GameObject unit - the prefab of the unit to buy
+     */
+    public void BuyUnit(GameObject unit)
+    {
+        UnitClass unitClass = unit.GetComponent<UnitClass>();
+        if(unitClass.cost <= gold)
+        {
+            GameObject newUnit = Instantiate(unit);
+            newUnit.GetComponent<UnitClass>().owner = this;
+            gold -= unitClass.cost;
+            newUnit.transform.position = spawnPoint;
+        }
+    }
+
+    /*
      * 
      *  Pathfinding Functions
      * 
      */
 
+    /*
+     * A function which finds paths for all the currently selected units from their current positions to the mouse position
+     */
     private void FindPaths()
     {
         Vector2 mousePos = GetMousePositionInWorld();

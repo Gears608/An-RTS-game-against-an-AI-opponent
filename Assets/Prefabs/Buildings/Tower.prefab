@@ -388,6 +388,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9af281cd956f8a44a3533966a606aeb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  health: 0
+  threatLevel: 1
   height: 2
   width: 2
   cost: 10

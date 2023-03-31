@@ -14,6 +14,7 @@ public class Flock : MonoBehaviour
      * 
      * UnitClass unit - the unit to be moved
      * 
+     * Returns a Vector2 which represents the midpoint of all nearby units in the flock
      */
     public Vector2 CohesionSteering(UnitClass unit)
     {
@@ -40,7 +41,7 @@ public class Flock : MonoBehaviour
 
         if(nearbyCount == 0)
         {
-            return Vector2.zero;
+            return currentPosition;
         }
 
         midpoint /= nearbyCount;
@@ -54,6 +55,7 @@ public class Flock : MonoBehaviour
      * 
      * UnitClass unit - the unit to be moved
      * 
+     * Returns a Vector2 which is the average direction of all nearby units in the flock
      */
     public Vector2 AlignmentSteering(UnitClass unit)
     {
@@ -91,7 +93,7 @@ public class Flock : MonoBehaviour
         flock.Remove(unit);
         if(flock.Count < 1)
         {
-            Destroy(this.gameObject);
+            Destroy(gameObject);
         }
     }
 }

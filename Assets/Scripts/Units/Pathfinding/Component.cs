@@ -12,6 +12,14 @@ public class Component
 
     public List<HierarchicalNode> portalNodes;
 
+    /*
+     * A constructor for a Component object
+     * 
+     * float x - the x position of the component
+     * float y - the y position of the component
+     * int indexX - the x index of the component
+     * int indexY - the y index of the component
+     */
     public Component(float x, float y, int indexX, int indexY)
     {
         this.x = x;
@@ -21,11 +29,21 @@ public class Component
         portalNodes = new List<HierarchicalNode>();
     }
 
+    /*
+     * A function which adds a node to the component
+     * 
+     * HierarchicalNode node - the node to add
+     */
     public void AddNode(HierarchicalNode node)
     {
         portalNodes.Add(node);
     }
 
+    /*
+     * A function which removes a node from the component
+     * 
+     * HierarchicalNode node - the node to remove
+     */
     public void RemoveNode(HierarchicalNode node)
     {
         foreach(HierarchicalNode n in portalNodes)
