@@ -13,7 +13,7 @@ public class PlayerClass : MonoBehaviour
     [SerializeField]
     LayerMask playerUnitMask;  // initialises a variable to hold the layer mask of the players units
     [SerializeField]
-    private List<GameObject> selectedUnits = new List<GameObject>();  // initialises a list to hold all the currently selected units
+    private List<UnitClass> selectedUnits = new List<UnitClass>();  // initialises a list to hold all the currently selected units
     [SerializeField]
     private RectTransform selectionBox;  // initialises a variable to hold the visual prompt of the selection box
     private Vector2 selectionBoxStartPos;  // initialises a variable which hold the starting position of the selection box
@@ -97,7 +97,7 @@ public class PlayerClass : MonoBehaviour
         // on mouse down
         if (Input.GetMouseButtonDown(0))
         {
-            foreach (GameObject unit in selectedUnits)
+            foreach (UnitClass unit in selectedUnits)
             {
                 unit.transform.Find("Selected").gameObject.SetActive(false);
             }
@@ -117,9 +117,9 @@ public class PlayerClass : MonoBehaviour
                     if (selection.gameObject.tag == "PlayerUnit")
                     {
                         selection.transform.Find("Selected").gameObject.SetActive(true);
-                        selectedUnits.Add(selection.gameObject);
+                        selectedUnits.Add(selection.GetComponentInParent<UnitClass>());
                     }
-                    else if (selection.gameObject.tag == "PlayerBuilding")
+                    else if (selection.gameObject.tag == "PlayerBuildingUI")
                     {
                         Building z = selection.GetComponentInParent<Building>();
                         popupWindow.PopulateWindow(z.buildingName, z.infoText);
@@ -138,7 +138,7 @@ public class PlayerClass : MonoBehaviour
                 foreach (Collider2D box in unitsInArea)
                 {
                     box.transform.Find("Selected").gameObject.SetActive(true);
-                    selectedUnits.Add(box.gameObject);
+                    selectedUnits.Add(box.GetComponentInParent<UnitClass>());
                 }
                 selectionBox.gameObject.SetActive(false);
             }
@@ -174,7 +174,7 @@ public class PlayerClass : MonoBehaviour
      * 
      * GameObject unit - the unit to remove
      */
-    private void removeSelectedUnit(GameObject unit)
+    public void removeSelectedUnit(UnitClass unit)
     {
         unit.transform.Find("Selected").gameObject.SetActive(false);
         selectedUnits.Remove(unit);
@@ -347,7 +347,7 @@ public class PlayerClass : MonoBehaviour
                 }
                 else
                 {
-                    selectedUnits[0].GetComponent<UnitClass>().SetPath(path, flock, mousePos);
+                    selectedUnits[0].SetPath(path, flock, mousePos);
 
                     for (int i = 1; i < selectedUnits.Count; i++)
                     {
@@ -359,7 +359,7 @@ public class PlayerClass : MonoBehaviour
                         else
                         {
                             //Debug.Log(mergingPath.Count);
-                            selectedUnits[i].GetComponent<UnitClass>().SetPath(mergingPath, flock, mousePos);
+                            selectedUnits[i].SetPath(mergingPath, flock, mousePos);
                         }
                     }
                 }
@@ -368,9 +368,9 @@ public class PlayerClass : MonoBehaviour
             worldController.RemoveNodeFromGraph(destinationNode);
 
             List<UnitClass> units = new List<UnitClass>();
-            foreach (GameObject unit in selectedUnits)
+            foreach (UnitClass unit in selectedUnits)
             {
-                units.Add(unit.GetComponent<UnitClass>());
+                units.Add(unit);
             }
 
             if (units.Count > 0)

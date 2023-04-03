@@ -19,7 +19,7 @@ public class WorldController : MonoBehaviour
     public int componentWidth;
     public int componentHeight;
 
-    public int terrainMask;
+    private int terrainMask;
 
     private Dictionary<(Component, Vector2Int), TileGrid<Vector2>> cachedFlowfields;
 
@@ -45,9 +45,14 @@ public class WorldController : MonoBehaviour
         {
             allUnits.Add(unit.GetComponent<UnitClass>());
         }
+        foundObjects = GameObject.FindGameObjectsWithTag("EnemyUnit");
+        foreach (GameObject unit in foundObjects)
+        {
+            allUnits.Add(unit.GetComponent<UnitClass>());
+        }
 
         tileMap = new TileGrid<Node>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
-        terrainMask = LayerMask.GetMask("Impassable");
+        terrainMask = LayerMask.GetMask("Impassable", "EnemyBuilding", "PlayerBuilding");
 
         components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, /*(componentHeight * tileSize / 4f)*/0));
         cachedFlowfields = new Dictionary<(Component, Vector2Int), TileGrid<Vector2>>();
@@ -299,7 +304,6 @@ public class WorldController : MonoBehaviour
         if (length > 0)
         {
             int midPointY = startPosIndex.y + componentHeight - 1 - Mathf.FloorToInt(length / 2f);
-            Debug.Log(midPointY);
             HierarchicalNode newHNode = new HierarchicalNode(startPosIndex.x, midPointY, component);
             HierarchicalNode neighbourHNode = new HierarchicalNode(startPosIndex.x + xModifier, midPointY, components.GetObject(component.indexX + xModifier, component.indexY));
 
@@ -608,6 +612,7 @@ public class WorldController : MonoBehaviour
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
 
         Collider2D buildingCollider = Physics2D.OverlapPoint(position);
+        Debug.Log(buildingCollider.name);
         //checks that there is a collision
         if(buildingCollider == null)
         {
@@ -627,11 +632,8 @@ public class WorldController : MonoBehaviour
                 tileMap.GetObject(pos.x, pos.y).cost = 1;
             }
         }
-        if (buildingCollider.gameObject.tag == "PlayerBuilding")
-        {
-            //destroys the building
-            Destroy(building.gameObject);
-        }
+        //destroys the building
+        Destroy(building.gameObject);
         //updates the node graph
         UpdateNodes(positions);
     }
