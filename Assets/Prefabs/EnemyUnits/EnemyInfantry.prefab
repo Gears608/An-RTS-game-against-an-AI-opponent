@@ -74,7 +74,7 @@ MonoBehaviour:
   attackCooldown: 1
   damage: 10
   range: 3
-  thisUnit: {fileID: 9040746877952488439}
+  thisEntity: {fileID: 9040746877952488439}
 --- !u!120 &1253254494101759017
 LineRenderer:
   m_ObjectHideFlags: 0

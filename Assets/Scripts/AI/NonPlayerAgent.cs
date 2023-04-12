@@ -46,8 +46,6 @@ public class NonPlayerAgent : PlayerClass
         mineCost = minePrefab.GetComponent<Building>().cost;
         barracksCost = barracksPrefab.GetComponent<Building>().cost;
         towerCost = towerPrefab.GetComponent<Building>().cost;
-
-        CalculatePriorities();
     }
 
     protected void Update()

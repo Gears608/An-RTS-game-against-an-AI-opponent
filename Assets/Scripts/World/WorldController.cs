@@ -41,6 +41,8 @@ public class WorldController : MonoBehaviour
 
     [SerializeField]
     private GameObject pause;
+    [SerializeField]
+    private TMP_Text winText;
 
     [SerializeField]
     private int maxCachedComponents;
@@ -113,11 +115,21 @@ public class WorldController : MonoBehaviour
         Debug.Log("Paths Initialized.");
     }
 
+    #region GameState
+
+    /*
+     * A function which returns the current paused state of the game
+     * 
+     * Returns bool; true if paused, false if not paused
+    */
     public bool IsGamePaused()
     {
         return isPaused;
     }
 
+    /*
+     * A function which changes the paused state of the game; pause/unpause
+    */
     public void PauseGame()
     {
         if (isPaused)
@@ -131,6 +143,28 @@ public class WorldController : MonoBehaviour
         isPaused = !isPaused;
         pause.SetActive(!pause.activeSelf);
     }
+
+    /*
+     * A function which ends the game
+     * 
+     * PlayerClass loser - the PlayerClass of the loser
+    */
+    public void EndGame(PlayerClass loser)
+    {
+        Time.timeScale = 0f;
+        isPaused = true;
+        if (loser is NonPlayerAgent)
+        {
+            winText.text = "You Win!";
+        }
+        else
+        {
+            winText.text = "Game Over.";
+        }
+        winText.gameObject.SetActive(true);
+    }
+
+    #endregion
 
     #region WorldRepresentation
 

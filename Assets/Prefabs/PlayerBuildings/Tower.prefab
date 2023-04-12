@@ -74,6 +74,7 @@ MonoBehaviour:
   attackCooldown: 1
   damage: 10
   range: 5
+  thisEntity: {fileID: 6408279251054314937}
 --- !u!120 &7572932332862147644
 LineRenderer:
   m_ObjectHideFlags: 0

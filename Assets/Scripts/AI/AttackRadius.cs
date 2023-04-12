@@ -21,7 +21,7 @@ public class AttackRadius : MonoBehaviour
     [SerializeField]
     private float range;
     [SerializeField]
-    private UnitClass thisUnit;
+    private DestroyableEntity thisEntity;
 
     private float timer = 0f;
 
@@ -55,7 +55,7 @@ public class AttackRadius : MonoBehaviour
 
     private void Update()
     {
-        if (!thisUnit.worldController.IsGamePaused())
+        if (!thisEntity.worldController.IsGamePaused())
         {
             timer += Time.deltaTime;
             //if the unit has no target

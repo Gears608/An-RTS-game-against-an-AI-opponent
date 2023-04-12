@@ -8,10 +8,8 @@ public class Core : Building
     {
         if (health == 0)
         {
-            
+            worldController.EndGame(owner);
         }
-
-        //owner.gold -= unitCount;
 
         base.Update();
     }

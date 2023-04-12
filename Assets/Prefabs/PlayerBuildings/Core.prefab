@@ -303,7 +303,7 @@ GameObject:
   - component: {fileID: 6548699498840674848}
   - component: {fileID: 5618305761810742002}
   - component: {fileID: 4557295708026490286}
-  - component: {fileID: 6017794948884014937}
+  - component: {fileID: 5040772865503058149}
   m_Layer: 9
   m_Name: Core
   m_TagString: PlayerBuilding
@@ -378,7 +378,7 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!114 &6017794948884014937
+--- !u!114 &5040772865503058149
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -387,7 +387,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8848653469382910708}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0af0dafcb49443489eeae9d0310a967, type: 3}
+  m_Script: {fileID: 11500000, guid: 04be2655be71ccf419e261ff211eed57, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   health: 1000
@@ -397,15 +397,11 @@ MonoBehaviour:
   owner: {fileID: 0}
   height: 2
   width: 2
-  cost: 10
-  buildingName: Barracks
-  enableUnitMenu: 1
+  cost: 0
+  buildingName: Core
+  enableUnitMenu: 0
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
   searchRadius: 0
-  infoText: 
-  unitCount: 0
-  maxUnitCount: 5
-  units: []
-  unitPrefab: {fileID: 8884702013839080562, guid: 05129c98fe45b0144b207db54e946e55, type: 3}
+  infoText: The core of the base; must be kept safe.
