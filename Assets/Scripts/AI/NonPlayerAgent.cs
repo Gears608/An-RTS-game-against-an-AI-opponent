@@ -350,7 +350,86 @@ public class NonPlayerAgent : PlayerClass
 
     private void UnitManagementTree()
     {
+        List<UnitClass> idleUnits = GetCurrentlyIdleUnits();
+    }
 
+    private List<UnitClass> GetCurrentlyIdleUnits()
+    {
+        List<UnitClass> idleUnits = new List<UnitClass>();
+        foreach(UnitClass unit in allUnits)
+        {
+            if (unit.IsIdle())
+            {
+                idleUnits.Add(unit);
+            }
+        }
+
+        return idleUnits;
+    }
+
+    public void FindPaths(Vector2 destination, List<UnitClass> selectedUnits)
+    {
+        //checks if there are units selected and the position is valid
+        if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
+        {
+            GameObject flockController = new GameObject("Flock");
+            Flock flock = flockController.AddComponent<Flock>();
+            List<HierarchicalNode> path = null;
+            HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
+
+            while (path == null && selectedUnits.Count > 0)
+            {
+                //if destination is unreachable
+                if (destinationNode == null)
+                {
+                    selectedUnits.Clear();
+                    continue;
+                }
+
+                path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
+
+                //if no path is found
+                if (path == null)
+                {
+                    selectedUnits.RemoveAt(0);
+                }
+                else
+                {
+                    selectedUnits[0].SetPath(path, flock, destination);
+
+                    for (int i = 1; i < selectedUnits.Count; i++)
+                    {
+                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
+                        if (mergingPath == null)
+                        {
+                            selectedUnits.RemoveAt(i);
+                        }
+                        else
+                        {
+                            //Debug.Log(mergingPath.Count);
+                            selectedUnits[i].SetPath(mergingPath, flock, destination);
+                        }
+                    }
+                }
+            }
+
+            worldController.RemoveNodeFromGraph(destinationNode);
+
+            List<UnitClass> units = new List<UnitClass>();
+            foreach (UnitClass unit in selectedUnits)
+            {
+                units.Add(unit);
+            }
+
+            if (units.Count > 0)
+            {
+                flockController.GetComponent<Flock>().group = units;
+            }
+            else
+            {
+                Destroy(flockController);
+            }
+        }
     }
 
     private class Location

@@ -5,6 +5,9 @@ using UnityEditor;
 
 public class UnitClass : DestroyableEntity
 {
+    private enum State { Moving, Attacking, Idle }
+    private State currentState;
+
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
 
@@ -21,8 +24,6 @@ public class UnitClass : DestroyableEntity
     public float maxForce;
     public float maxSpeed;
 
-    public bool moving;
-
     public float seperationRadius = 3;
     public float radius = 0.5f;
 
@@ -34,64 +35,9 @@ public class UnitClass : DestroyableEntity
     {
         base.Start();
         worldController.AddUnit(this);
-        moving = false;
         hierarchicalPath = new Stack<HierarchicalNode>();
         rb = GetComponent<Rigidbody2D>();
-    }
-
-    /*
-     * A function which halts the moving process and clears the path of the unit
-    */
-    public void StopMoving()
-    {
-        moving = false;
-        rb.velocity = Vector2.zero;
-        currentFlowField = null;
-        hierarchicalPath.Clear();
-        worldController.AlertNeighbours(this);
-    }
-
-    /*
-     * A function which sets the current path of the unit
-     * 
-     *  List<HierarchicalNode> hierarchicalPath - the path to be followed
-     *  Flock flock - the flock of other units heading to the destination
-     *  Vector2 destination - the destination point
-    */
-    public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
-    {
-        if (Selection.Contains(gameObject))
-        {
-            Debug.Log("New Path Set.");
-        }
-        this.destination = destination;
-        moving = true;
-        if(this.flock == null)
-        {
-            this.flock = flock;
-        }
-        else if(this.flock != flock)
-        {
-            this.flock.RemoveUnit(this);
-            this.flock = flock;
-        }
-        this.hierarchicalPath.Clear();
-        currentFlowField = null;
-
-        this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
-        if (this.hierarchicalPath.Count > 1)
-        {
-            if (this.hierarchicalPath.Count % 2 == 0)
-            {
-                this.hierarchicalPath.Pop();
-            }
-            else
-            {
-                this.hierarchicalPath.Pop();
-                this.hierarchicalPath.Pop();
-            }
-        }
-        currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
+        currentState = State.Idle;
     }
 
     protected override void Update()
@@ -124,16 +70,14 @@ public class UnitClass : DestroyableEntity
         }
     }
 
-
     public void FixedUpdate()
     {
-        
         Vector2 flowSteer = new Vector2();
         Vector2 cohesionSteer = new Vector2();
         Vector2 alignmentSteer = new Vector2();
         Vector2 seperationSteer = new Vector2();
 
-        if (moving)
+        if (currentState == State.Moving)
         {
             flowSteer = FlowFieldSteering();
             if (flock != null)
@@ -152,7 +96,7 @@ public class UnitClass : DestroyableEntity
         //Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
         //Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer, Color.yellow);
         //Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer, Color.green);
-        Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer, Color.black);
+        //Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer, Color.black);
 
         Vector2 direction = flowSteer + (cohesionSteer * 0.1f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
 
@@ -165,12 +109,12 @@ public class UnitClass : DestroyableEntity
 
         rb.AddForce(desiredVelocity);
 
-        if(rb.velocity.magnitude > maxSpeed)
+        if (rb.velocity.magnitude > maxSpeed)
         {
             rb.velocity = rb.velocity.normalized * maxSpeed;
         }
 
-        if(rb.velocity.x > 0.1)
+        if (rb.velocity.x > 0.1)
         {
             spriteRenderer.flipX = false;
         }
@@ -180,6 +124,88 @@ public class UnitClass : DestroyableEntity
         }
     }
 
+
+    public void StartAttacking()
+    {
+        currentState = State.Attacking;
+    }
+
+    public void StopAttacking()
+    {
+        if(currentFlowField == null)
+        {
+            currentState = State.Idle;
+        }
+        else
+        {
+            currentState = State.Moving;
+        }
+    }
+
+    public bool IsMoving()
+    {
+        return currentState == State.Moving;
+    }
+
+    public bool IsIdle()
+    {
+        return currentState == State.Idle;
+    }
+
+    /*
+     * A function which halts the moving process and clears the path of the unit
+    */
+    public void StopMoving()
+    {
+        currentState = State.Idle;
+        rb.velocity = Vector2.zero;
+        currentFlowField = null;
+        hierarchicalPath.Clear();
+        worldController.AlertNeighbours(this);
+    }
+
+    /*
+     * A function which sets the current path of the unit
+     * 
+     *  List<HierarchicalNode> hierarchicalPath - the path to be followed
+     *  Flock flock - the flock of other units heading to the destination
+     *  Vector2 destination - the destination point
+    */
+    public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
+    {
+        if (Selection.Contains(gameObject))
+        {
+            Debug.Log("New Path Set.");
+        }
+        this.destination = destination;
+        if(this.flock == null)
+        {
+            this.flock = flock;
+        }
+        else if(this.flock != flock)
+        {
+            this.flock.RemoveUnit(this);
+            this.flock = flock;
+        }
+        this.hierarchicalPath.Clear();
+        currentFlowField = null;
+
+        this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
+        if (this.hierarchicalPath.Count > 1)
+        {
+            if (this.hierarchicalPath.Count % 2 == 0)
+            {
+                this.hierarchicalPath.Pop();
+            }
+            else
+            {
+                this.hierarchicalPath.Pop();
+                this.hierarchicalPath.Pop();
+            }
+        }
+        currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
+        currentState = State.Moving;
+    }
 
     /*
      * A function which checks the validity of the current path
@@ -339,7 +365,7 @@ public class UnitClass : DestroyableEntity
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
+                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

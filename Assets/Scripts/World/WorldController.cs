@@ -1109,9 +1109,9 @@ public class WorldController : MonoBehaviour
                 int neighbourNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
 
                 //if the cost of the neighbour is not set, or is less than the current
-                if (currentNode_ + 1 < neighbourNode_ || neighbourNode_ == -1)
+                if (currentNode_ + 2 < neighbourNode_ || neighbourNode_ == -1)
                 {
-                    neighbourNode_ = currentNode_ + 1;
+                    neighbourNode_ = currentNode_ + 2;
                     integrationField.SetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
                     if (!openList.Contains(neighbourNode))
                     {
@@ -1119,6 +1119,42 @@ public class WorldController : MonoBehaviour
                     }
                 }
             }
+            
+            //gets a list of the nodes neighbours
+            neighbours = tileMap.GetIntercardinalNeighbours(currentNode.x, currentNode.y);
+
+            //loops over all the nodes neighbours
+            foreach (Vector2Int neighbourNode in neighbours)
+            {
+
+                if (neighbourNode.x >= maxX || neighbourNode.x < minX || neighbourNode.y >= maxY || neighbourNode.y < minY)
+                {
+                    continue;
+                }
+                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y).cost == 255)
+                {
+                    continue;
+                }
+                if (closedList.Contains(neighbourNode))
+                {
+                    continue;
+                }
+
+                int currentNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
+                int neighbourNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
+
+                //if the cost of the neighbour is not set, or is less than the current
+                if (currentNode_ + 3 < neighbourNode_ || neighbourNode_ == -1)
+                {
+                    neighbourNode_ = currentNode_ + 3;
+                    integrationField.SetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
+                    if (!openList.Contains(neighbourNode))
+                    {
+                        openList.Add(neighbourNode);
+                    }
+                }
+            }
+            
         }
 
         return integrationField;
@@ -1283,7 +1319,7 @@ public class WorldController : MonoBehaviour
         foreach (UnitClass other in allUnits)
         {
             Vector2 displacement = position - (Vector2)other.transform.position;
-            if (new Vector2(displacement.x, displacement.y * 2f).magnitude < unit.seperationRadius && other.moving == true && unit.flock == other.flock)
+            if (new Vector2(displacement.x, displacement.y * 2f).magnitude < unit.seperationRadius && other.IsMoving() && unit.flock == other.flock)
             {
                 other.StopMoving();
             }

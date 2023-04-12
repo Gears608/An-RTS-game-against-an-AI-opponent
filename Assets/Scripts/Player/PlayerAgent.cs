@@ -483,7 +483,7 @@ public class PlayerAgent : PlayerClass
 
             if (units.Count > 0)
             {
-                flockController.GetComponent<Flock>().flock = units;
+                flockController.GetComponent<Flock>().group = units;
             }
             else
             {

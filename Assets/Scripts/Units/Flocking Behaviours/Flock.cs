@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Flock : MonoBehaviour
 {
-    public List<UnitClass> flock;
+    public List<UnitClass> group;
 
     [SerializeField]
     private int cohesionMax = 5;
@@ -23,7 +23,7 @@ public class Flock : MonoBehaviour
         Vector2 midpoint = new Vector2();
         int nearbyCount = 0;
 
-        foreach(UnitClass member in flock)
+        foreach(UnitClass member in group)
         {
             if(member == unit)
             {
@@ -62,7 +62,7 @@ public class Flock : MonoBehaviour
         Vector2 alignment = new Vector2();
         int nearbyCount = 0;
 
-        foreach (UnitClass member in flock)
+        foreach (UnitClass member in group)
         {
             Vector2 nearby = unit.transform.position - member.transform.position;
             if (new Vector2(nearby.x, nearby.y * 2f).magnitude < cohesionMax && member.rb.velocity.magnitude > 0)
@@ -90,8 +90,8 @@ public class Flock : MonoBehaviour
      */
     public void RemoveUnit(UnitClass unit)
     {
-        flock.Remove(unit);
-        if(flock.Count < 1)
+        group.Remove(unit);
+        if(group.Count < 1)
         {
             Destroy(gameObject);
         }

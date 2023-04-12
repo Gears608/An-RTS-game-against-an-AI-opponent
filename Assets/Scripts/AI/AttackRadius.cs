@@ -47,6 +47,11 @@ public class AttackRadius : MonoBehaviour
             {
                 target.attackersCount--;
                 target = null;
+                if (thisEntity is UnitClass)
+                {
+                    UnitClass thisUnit = (UnitClass)thisEntity;
+                    thisUnit.StopAttacking();
+                }
                 projectileRenderer.enabled = false;
             }
             nearbyThreats.Remove(collisionClass);
@@ -111,6 +116,11 @@ public class AttackRadius : MonoBehaviour
             if(target != null)
             {
                 target.attackersCount++;
+                if(thisEntity is UnitClass)
+                {
+                    UnitClass thisUnit = (UnitClass)thisEntity;
+                    thisUnit.StartAttacking();
+                }
             }
         }
     }

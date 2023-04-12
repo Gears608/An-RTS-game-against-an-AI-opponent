@@ -35,6 +35,11 @@ public class Barracks : Building
         base.Update();
     }
 
+    public List<UnitClass> GetUnits()
+    {
+        return units;
+    }
+
     public void AddUnit(UnitClass unit)
     {
         units.Add(unit);
