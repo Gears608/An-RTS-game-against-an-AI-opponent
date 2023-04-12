@@ -5,7 +5,7 @@ using UnityEngine;
 public class BuildingButtonConroller : MonoBehaviour
 {
     [SerializeField]
-    private PlayerClass playerClass;
+    private PlayerAgent playerClass;
     [SerializeField]
     private GameObject buildingPrefab;
 

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 public class WorldController : MonoBehaviour
 {
@@ -19,6 +21,8 @@ public class WorldController : MonoBehaviour
     public int componentWidth;
     public int componentHeight;
 
+    public static bool isPaused;
+
     private int terrainMask;
 
     private Dictionary<(Component, Vector2Int), TileGrid<Vector2>> cachedFlowfields;
@@ -26,10 +30,17 @@ public class WorldController : MonoBehaviour
     [SerializeField]
     private PlayerClass playerClass;
 
-    [SerializeField] private bool displayCost = false;
-    [SerializeField] private bool showportals = false;
-    [SerializeField] private bool showComponents = false;
-    [SerializeField] private bool showGrid = false;
+    [SerializeField] 
+    private bool displayCost = false;
+    [SerializeField] 
+    private bool showportals = false;
+    [SerializeField] 
+    private bool showComponents = false;
+    [SerializeField] 
+    private bool showGrid = false;
+
+    [SerializeField]
+    private GameObject pause;
 
     [SerializeField]
     private int maxCachedComponents;
@@ -39,6 +50,8 @@ public class WorldController : MonoBehaviour
 
     private void Start()
     {
+        isPaused = false;
+
         allUnits = new List<UnitClass>();
         GameObject[] foundObjects = GameObject.FindGameObjectsWithTag("PlayerUnit");
         foreach(GameObject unit in foundObjects)
@@ -98,6 +111,25 @@ public class WorldController : MonoBehaviour
         }
 
         Debug.Log("Paths Initialized.");
+    }
+
+    public bool IsGamePaused()
+    {
+        return isPaused;
+    }
+
+    public void PauseGame()
+    {
+        if (isPaused)
+        {
+            Time.timeScale = 1f;
+        }
+        else
+        {
+            Time.timeScale = 0f;
+        }
+        isPaused = !isPaused;
+        pause.SetActive(!pause.activeSelf);
     }
 
     #region WorldRepresentation
@@ -237,7 +269,6 @@ public class WorldController : MonoBehaviour
                 CalculatePaths(neighbourComponent);
             }
 
-            Debug.Log("calculating new paths");
             ClearInternalPaths(component);
             CalculatePaths(component);
         }
@@ -571,12 +602,13 @@ public class WorldController : MonoBehaviour
      *  Vector2 position - the position to place the building at
      *  GameObject buildingPrefab - the prefab of the building to be placed
     */
-    public void PlaceBuilding(Vector2 position, GameObject buildingPrefab, PlayerClass owner)
+    public Building PlaceBuilding(Vector2 position, GameObject buildingPrefab, PlayerClass owner)
     {
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
         Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
 
-        GameObject buildingObject = Instantiate(buildingPrefab, gridPosition, buildingPrefab.transform.rotation);
+        GameObject buildingObject = Instantiate(buildingPrefab);
+        buildingObject.transform.position = gridPosition;
 
         Building building = buildingObject.GetComponent<Building>();
 
@@ -594,6 +626,8 @@ public class WorldController : MonoBehaviour
         }
 
         UpdateNodes(positions);
+
+        return building;
     }
 
     /*
@@ -601,22 +635,21 @@ public class WorldController : MonoBehaviour
      * 
      *  Vector2 position - the position of the building
     */
-    public void DestroyBuilding(Vector2 position)
+    public Building DestroyBuilding(Vector2 position)
     {
         //checks the position is in the world space
         if (!IsValidPosition(position))
         {
-            return;
+            return null;
         }
 
         Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
 
         Collider2D buildingCollider = Physics2D.OverlapPoint(position);
-        Debug.Log(buildingCollider.name);
         //checks that there is a collision
         if(buildingCollider == null)
         {
-            return;
+            return null;
         }
 
         Building building = buildingCollider.gameObject.GetComponentInParent<Building>();
@@ -632,10 +665,10 @@ public class WorldController : MonoBehaviour
                 tileMap.GetObject(pos.x, pos.y).cost = 1;
             }
         }
-        //destroys the building
-        Destroy(building.gameObject);
         //updates the node graph
         UpdateNodes(positions);
+
+        return building;
     }
 
     #endregion

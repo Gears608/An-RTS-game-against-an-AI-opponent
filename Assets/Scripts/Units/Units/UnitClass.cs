@@ -28,6 +28,8 @@ public class UnitClass : DestroyableEntity
 
     public int cost;
 
+    public Barracks home;
+
     protected override void Start()
     {
         base.Start();
@@ -94,20 +96,32 @@ public class UnitClass : DestroyableEntity
 
     protected override void Update()
     {
-        if(health == 0)
+        if (!worldController.IsGamePaused())
         {
-            worldController.RemoveUnit(this);
-            if (owner != null)
+            if (health == 0)
             {
-                owner.removeSelectedUnit(this);
+                if (home != null)
+                {
+                    home.RemoveUnit(this);
+                }
+                worldController.RemoveUnit(this);
+                if (owner != null)
+                {
+                    if (owner is PlayerAgent)
+                    {
+                        PlayerAgent owner_ = owner.GetComponent<PlayerAgent>();
+                        owner_.RemoveSelectedUnit(this);
+                    }
+                }
+                if (flock != null)
+                {
+                    flock.RemoveUnit(this);
+                }
+                owner.RemoveUnit(this);
             }
-            if(flock != null)
-            {
-                flock.RemoveUnit(this);
-            }
+            base.Update();
+            CheckPath();
         }
-        base.Update();
-        CheckPath();
     }
 
 

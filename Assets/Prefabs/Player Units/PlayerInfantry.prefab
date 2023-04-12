@@ -74,6 +74,7 @@ MonoBehaviour:
   attackCooldown: 1
   damage: 10
   range: 3
+  thisUnit: {fileID: 9040746877952488439}
 --- !u!120 &186199408456397765
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -183,9 +184,10 @@ GameObject:
   m_Component:
   - component: {fileID: 8591090685129594115}
   - component: {fileID: 2144500199879448808}
-  m_Layer: 6
+  - component: {fileID: 6425715432839461759}
+  m_Layer: 8
   m_Name: Sprite
-  m_TagString: Untagged
+  m_TagString: PlayerUnitUI
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -257,6 +259,32 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 1
+--- !u!61 &6425715432839461759
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2507203895116493166}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0.5}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0.5, y: 0}
+    oldSize: {x: 1, y: 1}
+    newSize: {x: 1, y: 1}
+    adaptiveTilingThreshold: 0.5
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  serializedVersion: 2
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
 --- !u!1 &7246418358030480053
 GameObject:
   m_ObjectHideFlags: 0
@@ -426,7 +454,8 @@ MonoBehaviour:
   moving: 0
   seperationRadius: 0.3
   radius: 0.125
-  cost: 0
+  cost: 10
+  home: {fileID: 0}
 --- !u!70 &4044021341136896625
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

@@ -20,12 +20,15 @@ public class GoldMine : Building
     {
         base.Update();
 
-        timer += Time.deltaTime;
-
-        if (timer >= delay)
+        if (!worldController.IsGamePaused())
         {
-            timer = 0f;
-            owner.gold += increase;
+            timer += Time.deltaTime;
+
+            if (timer >= delay)
+            {
+                timer = 0f;
+                owner.gold += increase;
+            }
         }
     }
 

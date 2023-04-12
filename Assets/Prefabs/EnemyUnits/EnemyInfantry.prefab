@@ -70,10 +70,11 @@ MonoBehaviour:
   - PlayerUnit
   ignore:
     serializedVersion: 2
-    m_Bits: 160
+    m_Bits: 164
   attackCooldown: 1
   damage: 10
   range: 3
+  thisUnit: {fileID: 9040746877952488439}
 --- !u!120 &1253254494101759017
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -426,7 +427,8 @@ MonoBehaviour:
   moving: 0
   seperationRadius: 0.3
   radius: 0.125
-  cost: 0
+  cost: 10
+  home: {fileID: 0}
 --- !u!70 &4044021341136896625
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
