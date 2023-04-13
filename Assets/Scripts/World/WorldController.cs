@@ -8,7 +8,7 @@ using TMPro;
 
 public class WorldController : MonoBehaviour
 {
-    public TileGrid<Node> tileMap;
+    public TileGrid<int> tileMap;
     public int width;
     public int height;
 
@@ -36,8 +36,6 @@ public class WorldController : MonoBehaviour
     private bool showportals = false;
     [SerializeField] 
     private bool showComponents = false;
-    [SerializeField] 
-    private bool showGrid = false;
 
     [SerializeField]
     private GameObject pause;
@@ -66,7 +64,7 @@ public class WorldController : MonoBehaviour
             allUnits.Add(unit.GetComponent<UnitClass>());
         }
 
-        tileMap = new TileGrid<Node>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
+        tileMap = new TileGrid<int>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
         terrainMask = LayerMask.GetMask("Impassable", "EnemyBuilding", "PlayerBuilding");
 
         components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, /*(componentHeight * tileSize / 4f)*/0));
@@ -81,8 +79,7 @@ public class WorldController : MonoBehaviour
                 {
                     for (int y1 = 0; y1 < componentHeight; y1++)
                     {
-                        Node node = new Node((x1 + x * componentWidth), (y1 + y * componentHeight), 1);
-                        tileMap.SetObject(x1 + x * componentWidth, y1 + y * componentHeight, node);
+                        tileMap.SetObject(x1 + x * componentWidth, y1 + y * componentHeight, 1);
                     }
                 }
                 Vector2 pos = new Vector2(componentHeight * tileSize * height / 2f + ((x * componentWidth * tileSize - y * componentHeight * tileSize) / 2f), ((x * componentWidth * tileSize + y * componentHeight * tileSize) / 4f));
@@ -327,7 +324,7 @@ public class WorldController : MonoBehaviour
                 if (Physics2D.OverlapPointAll(position + new Vector2(0, tileSize / 4f), terrainMask, 1f, -1f).Length > 0)
                 {
                     //Debug.Log("Updated cost");
-                    tileMap.GetObject(x, y).cost = 255;
+                    tileMap.SetObject(x, y, 255);
                 }
             }
         }
@@ -345,10 +342,10 @@ public class WorldController : MonoBehaviour
         int length = 0;
         for (int y = startPosIndex.y; y < startPosIndex.y + componentHeight; y++)
         {
-            Node currentNode = tileMap.GetObject(startPosIndex.x, y);
-            Node neighbourNode = tileMap.GetObject(startPosIndex.x + xModifier, y);
+            int currentNodeCost = tileMap.GetObject(startPosIndex.x, y);
+            int neighbourNodeCost = tileMap.GetObject(startPosIndex.x + xModifier, y);
 
-            if (currentNode.cost < 255 && neighbourNode.cost < 255)
+            if (currentNodeCost < 255 && neighbourNodeCost < 255)
             {
                 length++;
             }
@@ -391,10 +388,10 @@ public class WorldController : MonoBehaviour
         int length = 0;
         for (int x = startPosIndex.x; x < startPosIndex.x + componentWidth; x++)
         {
-            Node currentNode = tileMap.GetObject(x, startPosIndex.y);
-            Node neighbourNode = tileMap.GetObject(x,  startPosIndex.y + yModifier);
+            int currentNodeCost = tileMap.GetObject(x, startPosIndex.y);
+            int neighbourNodeCost = tileMap.GetObject(x,  startPosIndex.y + yModifier);
 
-            if (currentNode.cost < 255 && neighbourNode.cost < 255)
+            if (currentNodeCost < 255 && neighbourNodeCost < 255)
             {
                 length++;
             }
@@ -463,9 +460,9 @@ public class WorldController : MonoBehaviour
      * 
      *  Vector2 position - the position of the node to find
      *  
-     *  Returns the Node at the position or null
+     *  Returns the cost at the position or null
     */
-    public Node GetNode(Vector2 position)
+    public int GetNode(Vector2 position)
     {
         return tileMap.GetObject(position);
     }
@@ -621,7 +618,7 @@ public class WorldController : MonoBehaviour
             for (int y = 0; y < building.height; y++)
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
-                if(tileMap.GetObject(pos.x, pos.y).cost == 255)
+                if(tileMap.GetObject(pos.x, pos.y) == 255)
                 {
                     return false;
                 }
@@ -655,7 +652,7 @@ public class WorldController : MonoBehaviour
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
                 positions.Add(pos);
-                tileMap.GetObject(pos.x, pos.y).cost = 255;
+                tileMap.SetObject(pos.x, pos.y, 255);
             }
         }
 
@@ -696,7 +693,7 @@ public class WorldController : MonoBehaviour
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
                 positions.Add(pos);
-                tileMap.GetObject(pos.x, pos.y).cost = 1;
+                tileMap.SetObject(pos.x, pos.y, 1);
             }
         }
         //updates the node graph
@@ -721,7 +718,7 @@ public class WorldController : MonoBehaviour
      *  A function which finds an a* path over the hierarchical nodes in the world
      *  
      *  Vector2 startPos - the starting position of the path
-     *  HierarchicalNode destinationNode - the destination as a given node in the node graph
+     *  Vector2 destination - the destination given as a position
      *  
      *  Returns a list of hierarchical nodes if a path is found
      *  Returns null if no path is found
@@ -803,6 +800,106 @@ public class WorldController : MonoBehaviour
             openList.Remove(currentNode);
             closedList.Add(currentNode);
         }
+
+        return null;
+    }
+
+    /*
+     *  A function which finds an a* path over the hierarchical nodes in the world
+     *  
+     *  Vector2 startPos - the starting position of the path
+     *  HierarchicalNode destinationNode - the destination as a given node in the node graph
+     *  
+     *  Returns a list of hierarchical nodes if a path is found
+     *  Returns null if no path is found
+    */
+    public List<HierarchicalNode> FindHierarchicalPath(Vector2 startPos, Vector2 destination)
+    {
+        if(tileMap.GetObject(destination) == 255)
+        {
+            return null;
+        }
+
+        HierarchicalNode destinationNode = AddNodeToGraph(destination);
+
+        //an open and closed list to hold the nodes to be searched
+        List<HierarchicalNode> openList = new List<HierarchicalNode>();
+        List<HierarchicalNode> closedList = new List<HierarchicalNode>();
+
+        //finds the nodes accessible to the unit
+        Component startComponent = components.GetObject(startPos);
+        TileGrid<int> integrationField = CreateIntegrationField(startComponent, startPos);
+
+        foreach (HierarchicalNode node in startComponent.portalNodes)
+        {
+            int weight = integrationField.GetObject(new Vector2(node.x, node.y) * tileSize);
+            if (weight != -1)
+            {
+                node.g = weight;
+                node.h = CalculateH(new Vector2(node.x, node.y), destination);
+                node.CalculateF();
+                node.previousNode = null;
+                openList.Add(node);
+            }
+        }
+
+        while (openList.Count > 0)
+        {
+            //select the node with the lowest f value
+            HierarchicalNode currentNode = openList[0];
+            foreach (HierarchicalNode node in openList)
+            {
+                if (node.f < currentNode.f)
+                {
+                    currentNode = node;
+                }
+            }
+
+            if (currentNode == destinationNode)
+            {
+                List<HierarchicalNode> output = new List<HierarchicalNode>();
+                output.Add(currentNode);
+                while (currentNode.previousNode != null)
+                {
+                    currentNode = currentNode.previousNode;
+                    output.Add(currentNode);
+                }
+
+                RemoveNodeFromGraph(destinationNode);
+
+                return output;
+            }
+
+            foreach (HierarchicalNode neighbour in currentNode.connectedNodes.Keys)
+            {
+                if (!closedList.Contains(neighbour))
+                {
+                    if (openList.Contains(neighbour))
+                    {
+                        if (neighbour.g > currentNode.g + currentNode.connectedNodes[neighbour])
+                        {
+                            neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
+                            neighbour.CalculateF();
+                            neighbour.previousNode = currentNode;
+                        }
+                    }
+                    else
+                    {
+                        neighbour.g = currentNode.g + currentNode.connectedNodes[neighbour];
+                        neighbour.h = CalculateH(new Vector2(neighbour.x, neighbour.y), destination);
+                        neighbour.CalculateF();
+                        neighbour.previousNode = currentNode;
+                        openList.Add(neighbour);
+                    }
+                }
+            }
+
+            openList.Remove(currentNode);
+            closedList.Add(currentNode);
+        }
+
+        Debug.Log(destinationNode);
+        RemoveNodeFromGraph(destinationNode);
 
         return null;
     }
@@ -1096,7 +1193,7 @@ public class WorldController : MonoBehaviour
                 {
                     continue;
                 }
-                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y).cost == 255)
+                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y) == 255)
                 {
                     continue;
                 }
@@ -1121,7 +1218,7 @@ public class WorldController : MonoBehaviour
             }
             
             //gets a list of the nodes neighbours
-            neighbours = tileMap.GetIntercardinalNeighbours(currentNode.x, currentNode.y);
+            neighbours = tileMap.GetIntercardinalNeighbours(currentNode.x, currentNode.y, 255);
 
             //loops over all the nodes neighbours
             foreach (Vector2Int neighbourNode in neighbours)
@@ -1131,7 +1228,7 @@ public class WorldController : MonoBehaviour
                 {
                     continue;
                 }
-                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y).cost == 255)
+                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y) == 255)
                 {
                     continue;
                 }
@@ -1369,7 +1466,7 @@ public class WorldController : MonoBehaviour
                     for (int y = 0; y < height * componentHeight; y++)
                     {
                         //cost
-                        Handles.Label(tileMap.GetWorldPositionFromIndex(x, y) + new Vector2(0, tileSize/4f), tileMap.GetObject(x, y).cost.ToString(), style);
+                        Handles.Label(tileMap.GetWorldPositionFromIndex(x, y) + new Vector2(0, tileSize/4f), tileMap.GetObject(x, y).ToString(), style);
                     }
                 }
             }
@@ -1396,20 +1493,6 @@ public class WorldController : MonoBehaviour
                             Handles.Label(Vector2.Lerp(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f) + tileMap.GetStartPosition(), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f) + tileMap.GetStartPosition(), 0.5f), n_.connectedNodes[n__].ToString());
                         }
                     }
-                }
-                Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, 0));
-            }
-
-            if (showGrid)
-            {
-                Gizmos.color = Color.gray;
-                Gizmos.matrix = Matrix4x4.Translate(new Vector2((componentHeight * tileSize * height )/2f, (tileSize/4f)));
-                foreach (Node n in tileMap.tileArray)
-                {
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) + (tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) + (tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) - (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(((n.x - n.y) * tileSize / 2f) + (tileSize / 2f), (n.x + n.y) * tileSize / 4f), new Vector2(((n.x - n.y) * tileSize / 2f), ((n.x + n.y) * tileSize / 4f) - (tileSize / 4f)));
                 }
                 Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, 0));
             }

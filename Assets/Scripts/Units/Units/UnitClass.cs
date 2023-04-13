@@ -5,8 +5,9 @@ using UnityEditor;
 
 public class UnitClass : DestroyableEntity
 {
-    private enum State { Moving, Attacking, Idle }
-    private State currentState;
+    protected enum State { Moving, Attacking, Idle, Patrol }
+    protected State currentState;
+    private State previousState;
 
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
@@ -77,7 +78,7 @@ public class UnitClass : DestroyableEntity
         Vector2 alignmentSteer = new Vector2();
         Vector2 seperationSteer = new Vector2();
 
-        if (currentState == State.Moving)
+        if (currentState == State.Moving || currentState == State.Patrol)
         {
             flowSteer = FlowFieldSteering();
             if (flock != null)
@@ -124,22 +125,25 @@ public class UnitClass : DestroyableEntity
         }
     }
 
-
     public void StartAttacking()
     {
+        previousState = currentState;
         currentState = State.Attacking;
     }
 
     public void StopAttacking()
     {
-        if(currentFlowField == null)
-        {
-            currentState = State.Idle;
-        }
-        else
-        {
-            currentState = State.Moving;
-        }
+        currentState = previousState;
+    }
+
+    public void SetPatrol()
+    {
+        currentState = State.Patrol;
+    }
+
+    public void StopPatrol()
+    {
+        currentState = State.Idle;
     }
 
     public bool IsMoving()
@@ -150,6 +154,10 @@ public class UnitClass : DestroyableEntity
     public bool IsIdle()
     {
         return currentState == State.Idle;
+    }
+    public bool IsPatrolling()
+    {
+        return currentState == State.Patrol;
     }
 
     /*
@@ -233,10 +241,7 @@ public class UnitClass : DestroyableEntity
                 //if the unit has been pushed onto an incorrect tile
                 else
                 {
-                    if (Selection.Contains(gameObject))
-                    {
-                        Debug.Log("Pushed off flowfield.");
-                    }
+                    Debug.Log("Pushed off flowfield.");
                     //recalculate the path
                     List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                     currentPath.Reverse();
@@ -260,10 +265,7 @@ public class UnitClass : DestroyableEntity
             //if the unit is on the correct component but is in an inaccessible sector
             if (currentFlowField.GetObject(transform.position) == default(Vector2))
             {
-                if (Selection.Contains(gameObject))
-                {
-                    Debug.Log("Inaccessable zone.");
-                }
+                Debug.Log("Inaccessable zone.");
                 //recalculate the path
                 List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                 currentPath.Reverse();

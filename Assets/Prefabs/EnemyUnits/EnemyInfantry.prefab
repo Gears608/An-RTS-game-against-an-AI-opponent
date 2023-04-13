@@ -74,7 +74,7 @@ MonoBehaviour:
   attackCooldown: 1
   damage: 10
   range: 3
-  thisEntity: {fileID: 9040746877952488439}
+  thisEntity: {fileID: 660551031322702795}
 --- !u!120 &1253254494101759017
 LineRenderer:
   m_ObjectHideFlags: 0
@@ -352,8 +352,8 @@ GameObject:
   m_Component:
   - component: {fileID: 8884702013839080556}
   - component: {fileID: 8884702013839080553}
-  - component: {fileID: 9040746877952488439}
   - component: {fileID: 4044021341136896625}
+  - component: {fileID: 660551031322702795}
   m_Layer: 7
   m_Name: EnemyInfantry
   m_TagString: EnemyUnit
@@ -400,35 +400,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
---- !u!114 &9040746877952488439
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8884702013839080562}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2185d8458b571d9439011e2cd0717cc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  health: 100
-  attackersCount: 0
-  threatLevel: 1
-  worldController: {fileID: 0}
-  owner: {fileID: 0}
-  rb: {fileID: 8884702013839080553}
-  spriteRenderer: {fileID: 2144500199879448808}
-  floworint: 0
-  destination: {x: 0, y: 0}
-  flock: {fileID: 0}
-  maxForce: 10
-  maxSpeed: 5
-  moving: 0
-  seperationRadius: 0.3
-  radius: 0.125
-  cost: 10
-  home: {fileID: 0}
 --- !u!70 &4044021341136896625
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -445,3 +416,33 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 0}
   m_Size: {x: 0.25, y: 0.05}
   m_Direction: 1
+--- !u!114 &660551031322702795
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8884702013839080562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f885fc83f27a9d40b5992ebaeff6450, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: 100
+  attackersCount: 0
+  threatLevel: 1
+  worldController: {fileID: 0}
+  owner: {fileID: 0}
+  rb: {fileID: 8884702013839080553}
+  spriteRenderer: {fileID: 2144500199879448808}
+  floworint: 0
+  destination: {x: 0, y: 0}
+  flock: {fileID: 0}
+  maxForce: 10
+  maxSpeed: 5
+  seperationRadius: 0.3
+  radius: 0.125
+  cost: 100
+  home: {fileID: 0}
+  minIdleTime: 3
+  maxIdleTime: 10

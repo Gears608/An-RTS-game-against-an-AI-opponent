@@ -397,10 +397,15 @@ MonoBehaviour:
   owner: {fileID: 0}
   height: 2
   width: 2
-  cost: 10
+  cost: 300
   buildingName: Barracks
   enableUnitMenu: 1
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  searchRadius: 0
   infoText: 
   unitCount: 0
   maxUnitCount: 5
+  units: []
   unitPrefab: {fileID: 8884702013839080562, guid: 05129c98fe45b0144b207db54e946e55, type: 3}

@@ -230,38 +230,51 @@ public class TileGrid<TTileType>
     }
 
     /*
-     * A function which returns the indexs of all the intercardinal neighbours of a given index
-     * 
-     * int x - the x index of the cell
-     * int y - the y index of the cell
-     * 
-     * Returns a List<Vector2Int> which is a list containing all the indexs of neighbouring cells
-     */
-    public List<Vector2Int> GetIntercardinalNeighbours(int x, int y)
+    * A function which returns the indexs of all the intercardinal neighbours of a given index
+    * 
+    * int x - the x index of the cell
+    * int y - the y index of the cell
+    * 
+    * Returns a List<Vector2Int> which is a list containing all the indexs of neighbouring cells
+    */
+    public List<Vector2Int> GetIntercardinalNeighbours(int x, int y, TTileType ignore)
     {
         List<Vector2Int> neighbours = new List<Vector2Int>();
 
-        if (x > 0)
+        bool up = IsValid(x, y + 1, ignore);
+        bool down = IsValid(x, y - 1, ignore);
+        bool left = IsValid(x - 1, y, ignore);
+        bool right = IsValid(x + 1, y, ignore);
+
+        if (up)
         {
-            if (y > 0)
+            if (right && IsValid(x + 1, y + 1, ignore))
             {
-                neighbours.Add(new Vector2Int(x - 1, y - 1));
-            }
-            if (y < height - 1)
-            {
-                neighbours.Add(new Vector2Int(x - 1, y + 1));
+                neighbours.Add(new Vector2Int(x + 1, y + 1));
             }
         }
 
-        if (x < width - 1)
+        if (right)
         {
-            if (y > 0)
+            if (down && IsValid(x + 1, y - 1, ignore))
             {
                 neighbours.Add(new Vector2Int(x + 1, y - 1));
             }
-            if (y < height - 1)
+        }
+
+        if (down)
+        {
+            if (left && IsValid(x - 1, y - 1, ignore))
             {
-                neighbours.Add(new Vector2Int(x + 1, y + 1));
+                neighbours.Add(new Vector2Int(x - 1, y - 1));
+            }
+        }
+
+        if (left)
+        {
+            if (up && IsValid(x - 1, y + 1, ignore))
+            {
+                neighbours.Add(new Vector2Int(x - 1, y + 1));
             }
         }
 

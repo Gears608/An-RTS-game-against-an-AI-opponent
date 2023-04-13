@@ -53,6 +53,7 @@ public class NonPlayerAgent : PlayerClass
         if (!worldController.IsGamePaused())
         {
             CurrencySpendTree();
+            UnitManagementTree();
         }
     }
 
@@ -114,7 +115,7 @@ public class NonPlayerAgent : PlayerClass
             GetInfo(ActionType.Mine).priority = 0;
         }
 
-        if(allUnits.Count < GetMaxUnits())
+        if (allUnits.Count < GetMaxUnits())
         {
             GetInfo(ActionType.Unit).priority = Mathf.Max((player.GetUnitCount() * 1.2f) - allUnits.Count, 1);
             GetInfo(ActionType.Barracks).priority = 0;
@@ -180,9 +181,18 @@ public class NonPlayerAgent : PlayerClass
     {
         gold -= GetBuildingCost(type);
 
-        if(type == ActionType.Mine)
+        if (type == ActionType.Mine)
         {
             prodPerTick++;
+        }
+
+        List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
+        foreach(UnitClass unit in idleUnits)
+        {
+            if (unit.IsPatrolling())
+            {
+                unit.StopMoving();
+            }
         }
 
         allBuildings.Add(worldController.PlaceBuilding(position, GetBuildingPrefab(type), this));
@@ -282,9 +292,9 @@ public class NonPlayerAgent : PlayerClass
     {
         int maxUnits = 0;
 
-        foreach(Building building in allBuildings)
+        foreach (Building building in allBuildings)
         {
-            if(building is Barracks)
+            if (building is Barracks)
             {
                 Barracks barracks = building.GetComponent<Barracks>();
                 maxUnits += barracks.maxUnitCount;
@@ -299,7 +309,7 @@ public class NonPlayerAgent : PlayerClass
         if (unitClass.cost <= gold)
         {
             GameObject newUnit = Instantiate(prefab);
-            UnitClass newUnitClass = newUnit.GetComponent<UnitClass>();
+            AIUnit newUnitClass = newUnit.GetComponent<AIUnit>();
             allUnits.Add(newUnitClass);
             newUnitClass.owner = this;
             home.AddUnit(newUnitClass);
@@ -315,7 +325,7 @@ public class NonPlayerAgent : PlayerClass
             if (building is Barracks)
             {
                 Barracks barracks = building.GetComponent<Barracks>();
-                if(barracks.unitCount < barracks.maxUnitCount)
+                if (barracks.unitCount < barracks.maxUnitCount)
                 {
                     return barracks;
                 }
@@ -332,15 +342,15 @@ public class NonPlayerAgent : PlayerClass
      */
     public override void RemoveBuilding(Building building)
     {
-        if(building is Barracks)
+        if (building is Barracks)
         {
             currentBarracks--;
         }
-        else if(building is GoldMine)
+        else if (building is GoldMine)
         {
             currentMines--;
         }
-        else if(building is Tower)
+        else if (building is Tower)
         {
             currentTowers--;
         }
@@ -350,15 +360,36 @@ public class NonPlayerAgent : PlayerClass
 
     private void UnitManagementTree()
     {
-        List<UnitClass> idleUnits = GetCurrentlyIdleUnits();
-    }
+        List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
 
-    private List<UnitClass> GetCurrentlyIdleUnits()
-    {
-        List<UnitClass> idleUnits = new List<UnitClass>();
-        foreach(UnitClass unit in allUnits)
+        //choose units for an attack
+        //make attack command
+        //remove non idle units
+
+        //for each of the remain idle units
+        foreach(AIUnit unit in idleUnits)
         {
-            if (unit.IsIdle())
+            //if the unit is ready to patrol
+            if (unit.ReadyForPatrol())
+            {
+                //find a position to patrol to
+                Vector2 position = Random.insideUnitCircle * buildRadius;
+                position += (Vector2)transform.position;
+                //get path to position
+                List<HierarchicalNode> path = worldController.FindHierarchicalPath(transform.position, position);
+                if (path != null)
+                {
+                    unit.SetPatrolRoute(path, position);
+                }
+            }
+        }
+    }
+    private List<AIUnit> GetCurrentlyIdleUnits()
+    {
+        List<AIUnit> idleUnits = new List<AIUnit>();
+        foreach (AIUnit unit in allUnits)
+        {
+            if (unit.IsIdle() || unit.IsPatrolling())
             {
                 idleUnits.Add(unit);
             }
@@ -444,7 +475,7 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
-    private class Action 
+    private class Action
     {
         public ActionType type;
         public float priority;
