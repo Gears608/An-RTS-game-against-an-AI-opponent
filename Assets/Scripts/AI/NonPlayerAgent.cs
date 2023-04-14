@@ -16,6 +16,9 @@ public class NonPlayerAgent : PlayerClass
     [SerializeField]
     private GameObject unitPrefab;
 
+    [SerializeField]
+    private float buildingSearchRadius;
+
     private int mineCost;
     private int towerCost;
     private int barracksCost;
@@ -91,7 +94,7 @@ public class NonPlayerAgent : PlayerClass
         //sets the priority for a defensive building
         if (currentTowers < maxTowers)
         {
-            GetInfo(ActionType.Tower).priority = NearbyAttackersCount() + 1;
+            GetInfo(ActionType.Tower).priority = NearbyThreatsCount() + 1;
         }
         else
         {
@@ -187,7 +190,7 @@ public class NonPlayerAgent : PlayerClass
         }
 
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
-        foreach(UnitClass unit in idleUnits)
+        foreach (AIUnit unit in idleUnits)
         {
             if (unit.IsPatrolling())
             {
@@ -272,13 +275,13 @@ public class NonPlayerAgent : PlayerClass
         return -1;
     }
 
-    private int NearbyAttackersCount()
+    private int NearbyThreatsCount()
     {
-        HashSet<UnitClass> nearbyUnits = new HashSet<UnitClass>();
+        HashSet<DestroyableObject> nearbyUnits = new HashSet<DestroyableObject>();
 
         foreach (Building building in allBuildings)
         {
-            UnitClass[] units = building.GetNearbyEnemies();
+            List<DestroyableObject> units = building.GetNearbyObjects(buildingSearchRadius, player.playerUnitMask);
             foreach (UnitClass unit in units)
             {
                 nearbyUnits.Add(unit);
@@ -362,12 +365,21 @@ public class NonPlayerAgent : PlayerClass
     {
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
 
-        //choose units for an attack
-        //make attack command
-        //remove non idle units
+        if (idleUnits.Count > 0)
+        {
+            Building building = ChooseBuildingForAttack(CalculateCurrentStrength());
+            if (building != null)
+            {
+                List<UnitClass> attackForce = UnitsForAttack(building.transform.position, CalculateBuildingStrength(building), idleUnits);
+                IssueAttackCommand(building, attackForce);
+            }
+        }
+
+        //get an updated list of idle units 
+        idleUnits = GetCurrentlyIdleUnits();
 
         //for each of the remain idle units
-        foreach(AIUnit unit in idleUnits)
+        foreach (AIUnit unit in idleUnits)
         {
             //if the unit is ready to patrol
             if (unit.ReadyForPatrol())
@@ -398,13 +410,112 @@ public class NonPlayerAgent : PlayerClass
         return idleUnits;
     }
 
-    public void FindPaths(Vector2 destination, List<UnitClass> selectedUnits)
+    private Building ChooseBuildingForAttack(float currentStrength)
+    {
+        Building bestChoice = null;
+        float choicePriority = 0;
+        foreach (Building building in player.allBuildings)
+        {
+            //if the building is currently being attacked already
+            if (!building.beingAttacked)
+            {
+                //get the cost of the new building
+                float newPriority = CalculateBuildingPriority(building) * 1.2f;
+                //if the new building is weaker than the current avaliable forces
+                if (CalculateBuildingStrength(building) < currentStrength)
+                {
+                    //if the new building is a better choice
+                    if (choicePriority < newPriority)
+                    {
+                        //set new best choice
+                        choicePriority = newPriority;
+                        bestChoice = building;
+                    }
+                }
+            }
+        }
+        return bestChoice;
+    }
+
+    private float CalculateBuildingPriority(Building building)
+    {
+        float distance = Vector2.Distance(transform.position, building.transform.position);
+        //priority scales on distance from base and strength around building
+        return (1f / distance) * CalculateBuildingStrength(building);
+    }
+
+    private float CalculateBuildingStrength(Building building)
+    {
+        float threatLevel = building.threatLevel;
+        List<DestroyableObject> nearbyUnits = building.GetNearbyObjects(buildingSearchRadius, player.playerUnitMask);
+        foreach (DestroyableObject enemy in nearbyUnits)
+        {
+            threatLevel += enemy.threatLevel;
+        }
+        return threatLevel;
+    }
+
+    private float CalculateCurrentStrength()
+    {
+        float strength = 0f;
+
+        foreach (UnitClass unit in allUnits)
+        {
+            strength += unit.threatLevel;
+        }
+
+        return strength;
+    }
+
+    private List<UnitClass> UnitsForAttack(Vector2 destination, float strength, List<AIUnit> idleUnits)
+    {
+        List<UnitClass> units = new List<UnitClass>();
+        List<AttackingAgent> agents = new List<AttackingAgent>();
+        float currentStrength = 0f;
+
+        foreach (UnitClass unit in idleUnits)
+        {
+            //precompute distances before comparing
+            agents.Add(new AttackingAgent(unit, Vector2.Distance(unit.transform.position, destination)));
+        }
+
+        agents.Sort(SortAgentByDistance);
+
+        foreach(AttackingAgent agent in agents)
+        {
+            currentStrength += agent.unit.threatLevel;
+            units.Add(agent.unit);
+            //if there is a large enough strength of units availiable
+            if(currentStrength >= strength)
+            {
+                return units;
+            }
+        }
+        //if not enough units are avaliable
+        return null;
+    }
+
+    private int SortAgentByDistance(AttackingAgent agent1, AttackingAgent agent2)
+    {
+        return agent1.distance.CompareTo(agent2.distance);
+    }
+
+    private void IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
+    {
+        Vector2 destination = building.transform.position;
+        if(FindPaths(destination, selectedUnits))
+        {
+            building.beingAttacked = true;
+        }
+    }
+
+    public bool FindPaths(Vector2 destination, List<UnitClass> selectedUnits)
     {
         //checks if there are units selected and the position is valid
         if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
         {
-            GameObject flockController = new GameObject("Flock");
-            Flock flock = flockController.AddComponent<Flock>();
+            GameObject groupController = new GameObject("UnitGroup");
+            UnitGroup group = groupController.AddComponent<UnitGroup>();
             List<HierarchicalNode> path = null;
             HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
 
@@ -426,7 +537,7 @@ public class NonPlayerAgent : PlayerClass
                 }
                 else
                 {
-                    selectedUnits[0].SetPath(path, flock, destination);
+                    selectedUnits[0].SetPath(path, group, destination);
 
                     for (int i = 1; i < selectedUnits.Count; i++)
                     {
@@ -438,7 +549,7 @@ public class NonPlayerAgent : PlayerClass
                         else
                         {
                             //Debug.Log(mergingPath.Count);
-                            selectedUnits[i].SetPath(mergingPath, flock, destination);
+                            selectedUnits[i].SetPath(mergingPath, group, destination);
                         }
                     }
                 }
@@ -446,20 +557,20 @@ public class NonPlayerAgent : PlayerClass
 
             worldController.RemoveNodeFromGraph(destinationNode);
 
-            List<UnitClass> units = new List<UnitClass>();
-            foreach (UnitClass unit in selectedUnits)
+            if (selectedUnits.Count > 0)
             {
-                units.Add(unit);
-            }
-
-            if (units.Count > 0)
-            {
-                flockController.GetComponent<Flock>().group = units;
+                groupController.GetComponent<UnitGroup>().group = selectedUnits;
+                return true;
             }
             else
             {
-                Destroy(flockController);
+                Destroy(groupController);
+                return false;
             }
+        }
+        else
+        {
+            return false;
         }
     }
 
@@ -487,4 +598,15 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    private class AttackingAgent
+    {
+        public UnitClass unit;
+        public float distance;
+
+        public AttackingAgent(UnitClass unit, float distance) 
+        {
+            this.unit = unit;
+            this.distance = distance;
+        }
+    }
 }

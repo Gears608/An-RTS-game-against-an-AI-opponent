@@ -30,6 +30,25 @@ public class AIUnit : UnitClass
         }
     }
 
+    public void SetPatrol()
+    {
+        currentState = State.Patrol;
+    }
+
+    public void StopPatrol()
+    {
+        currentState = State.Idle;
+    }
+
+    public bool IsIdle()
+    {
+        return currentState == State.Idle;
+    }
+    public bool IsPatrolling()
+    {
+        return currentState == State.Patrol;
+    }
+
     public bool ReadyForPatrol()
     {
         if (currentIdleTime >= idleTime)
@@ -49,5 +68,4 @@ public class AIUnit : UnitClass
         SetPath(route, null, destination);
         currentState = State.Patrol;
     }
-
 }

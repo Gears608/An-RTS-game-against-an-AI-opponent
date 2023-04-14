@@ -6,14 +6,15 @@ public class PlayerClass : MonoBehaviour
 {
     [SerializeField]
     protected List<UnitClass> allUnits;
-    [SerializeField]
-    protected List<Building> allBuildings;
+    public List<Building> allBuildings;
     [SerializeField]
     protected WorldController worldController;
 
     public int gold;
 
     protected Vector2 spawnPoint;
+
+    public LayerMask playerUnitMask;  // initialises a variable to hold the layer mask of the players units
 
     [SerializeField]
     protected int maxBarracks;
@@ -31,7 +32,7 @@ public class PlayerClass : MonoBehaviour
 
     private void Start()
     {
-        allBuildings = new List<Building>();
+        //allBuildings = new List<Building>();
         allUnits = new List<UnitClass>();
     }
 

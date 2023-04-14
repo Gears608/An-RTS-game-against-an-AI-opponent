@@ -12,8 +12,6 @@ public class PlayerAgent : PlayerClass
 
     protected Camera playerCam; // initialises a variable to hold the camera
     [SerializeField]
-    LayerMask playerUnitMask;  // initialises a variable to hold the layer mask of the players units
-    [SerializeField]
     protected LayerMask UILayer;
     [SerializeField]
     private List<UnitClass> selectedUnits = new List<UnitClass>();  // initialises a list to hold all the currently selected units
@@ -45,7 +43,6 @@ public class PlayerAgent : PlayerClass
         mode = Modes.Managing;
         currentBarracks = 0;
 
-        allBuildings = new List<Building>();
         allUnits = new List<UnitClass>();
     }
 

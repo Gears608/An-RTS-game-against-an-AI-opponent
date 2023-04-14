@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 
-public class UnitClass : DestroyableEntity
+public class UnitClass : DestroyableObject
 {
     protected enum State { Moving, Attacking, Idle, Patrol }
     protected State currentState;
@@ -22,8 +22,19 @@ public class UnitClass : DestroyableEntity
 
     public Flock flock;
 
-    public float maxForce;
-    public float maxSpeed;
+    [SerializeField]
+    private float maxSpeed;
+
+    [SerializeField]
+    protected float timer = 0f;
+    [SerializeField]
+    protected float attackCooldown;
+    [SerializeField]
+    protected DestroyableObject target;
+    [SerializeField]
+    private LayerMask enemyLayer;
+    [SerializeField]
+    protected int damage;
 
     public float seperationRadius = 3;
     public float radius = 0.5f;
@@ -31,6 +42,11 @@ public class UnitClass : DestroyableEntity
     public int cost;
 
     public Barracks home;
+
+    [SerializeField]
+    private float attackRadius;
+    [SerializeField]
+    private AttackRadius attackTrigger;
 
     protected override void Start()
     {
@@ -68,6 +84,7 @@ public class UnitClass : DestroyableEntity
             }
             base.Update();
             CheckPath();
+            Attack();
         }
     }
 
@@ -131,33 +148,20 @@ public class UnitClass : DestroyableEntity
         currentState = State.Attacking;
     }
 
-    public void StopAttacking()
+    public override void StopAttacking()
     {
+        target = null;
         currentState = previousState;
     }
 
-    public void SetPatrol()
-    {
-        currentState = State.Patrol;
-    }
-
-    public void StopPatrol()
-    {
-        currentState = State.Idle;
-    }
-
+    /*
+     * A function which returns a bool whether this unit is moving or not
+     * 
+     * Returns bool - true if in moving state, false if not
+    */
     public bool IsMoving()
     {
         return currentState == State.Moving;
-    }
-
-    public bool IsIdle()
-    {
-        return currentState == State.Idle;
-    }
-    public bool IsPatrolling()
-    {
-        return currentState == State.Patrol;
     }
 
     /*
@@ -181,10 +185,6 @@ public class UnitClass : DestroyableEntity
     */
     public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
     {
-        if (Selection.Contains(gameObject))
-        {
-            Debug.Log("New Path Set.");
-        }
         this.destination = destination;
         if(this.flock == null)
         {
@@ -265,7 +265,7 @@ public class UnitClass : DestroyableEntity
             //if the unit is on the correct component but is in an inaccessible sector
             if (currentFlowField.GetObject(transform.position) == default(Vector2))
             {
-                Debug.Log("Inaccessable zone.");
+                //Debug.Log("Inaccessable zone.");
                 //recalculate the path
                 List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                 currentPath.Reverse();
@@ -310,6 +310,60 @@ public class UnitClass : DestroyableEntity
         }
         return seekForce.normalized;
     }
+
+    private void Attack()
+    {
+        timer += Time.deltaTime;
+        //if the unit has no target
+        if (target == null)
+        {
+            //decide on a new target
+            DecideTarget();
+        }
+        else
+        {
+            DoUnitAction();
+        }
+    }
+
+    /*
+     * A function which decides and sets the target of the unit
+     */
+    private void DecideTarget()
+    {
+        List<DestroyableObject> nearbyThreats = attackTrigger.GetNearbyObjects();
+        if (nearbyThreats.Count > 0)
+        {
+            float targetPriority = float.MaxValue;
+            foreach (DestroyableObject nearby in nearbyThreats)
+            {
+                //checks for LoS
+                RaycastHit2D hit = Physics2D.Raycast(transform.position, nearby.transform.position - transform.position, attackRadius, enemyLayer);
+                if (hit.transform == nearby.transform)
+                {
+                    //decides which nearby entity has the highest priority
+                    float nearbyPriority = (nearby.threatLevel) * 100 / (nearby.health * (nearby.attackersCount + 1) * Vector2.Distance(transform.position, nearby.transform.position));
+                    if (nearbyPriority < targetPriority)
+                    {
+                        targetPriority = nearbyPriority;
+                        target = nearby;
+                    }
+                }
+            }
+            if (target != null)
+            {
+                target.attackersCount++;
+                StartAttacking();
+            }
+        }
+    }
+
+    public override DestroyableObject GetTarget()
+    {
+        return target;
+    }
+
+    public virtual void DoUnitAction(){}
 
     private void OnDrawGizmosSelected()
     {

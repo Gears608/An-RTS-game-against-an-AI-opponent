@@ -1053,7 +1053,7 @@ public class WorldController : MonoBehaviour
         }
 
         HierarchicalNode destinationNode = AddNodeToGraph(destinationPos);
-        Debug.Log("Temp destination added: "+destinationNode.x +", "+destinationNode.y);
+        //Debug.Log("Temp destination added: "+destinationNode.x +", "+destinationNode.y);
 
         while (openList.Count > 0)
         {
@@ -1070,7 +1070,7 @@ public class WorldController : MonoBehaviour
             //the merging bit
             if (path.Contains(currentNode))
             {
-                Debug.Log("Merging Path Found");
+                //Debug.Log("Merging Path Found");
                 List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
                 while (currentNode.previousNode != null)
                 {
@@ -1079,14 +1079,14 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
+                //Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
             //if destination node is reached without merging then return the path anyway
             if(currentNode == destinationNode)
             {
-                Debug.Log("Alternate Path Found");
+                //Debug.Log("Alternate Path Found");
                 List<HierarchicalNode> output = new List<HierarchicalNode>();
                 output.Add(currentNode);
                 while (currentNode.previousNode != null)
@@ -1096,7 +1096,7 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
+                //Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
@@ -1129,7 +1129,7 @@ public class WorldController : MonoBehaviour
         }
 
         RemoveNodeFromGraph(destinationNode);
-        Debug.Log("Temp destination removed");
+        //Debug.Log("Temp destination removed");
         return null;
     }
 

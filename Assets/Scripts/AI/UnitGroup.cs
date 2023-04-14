@@ -5,8 +5,6 @@ using UnityEngine;
 //extends flock here to apply flocking functionality to AI units
 public class UnitGroup : Flock
 {
-    public void FindPath()
-    {
 
-    }
+
 }
