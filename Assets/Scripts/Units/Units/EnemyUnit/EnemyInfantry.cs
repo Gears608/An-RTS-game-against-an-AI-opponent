@@ -15,7 +15,6 @@ public class EnemyInfantry : AIUnit
 
     public override void DoUnitAction()
     {
-        Debug.Log(timer +" >= "+attackCooldown);
         if (timer >= attackCooldown)
         {
             //produced a projectile like effect using a line

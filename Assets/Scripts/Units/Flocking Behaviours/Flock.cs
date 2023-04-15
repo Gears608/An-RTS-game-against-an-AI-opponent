@@ -88,7 +88,7 @@ public class Flock : MonoBehaviour
      * UnitClass unit - the unit to be removed
      * 
      */
-    public void RemoveUnit(UnitClass unit)
+    public virtual void RemoveUnit(UnitClass unit)
     {
         group.Remove(unit);
         if(group.Count < 1)

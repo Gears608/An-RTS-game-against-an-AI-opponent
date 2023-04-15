@@ -148,6 +148,9 @@ public class UnitClass : DestroyableObject
         currentState = State.Attacking;
     }
 
+    /*
+     * A function which stops the unit from attacking
+     */
     public override void StopAttacking()
     {
         target = null;
@@ -311,6 +314,9 @@ public class UnitClass : DestroyableObject
         return seekForce.normalized;
     }
 
+    /*
+     * Function which handles attacking functionality
+     */
     private void Attack()
     {
         timer += Time.deltaTime;
@@ -358,6 +364,11 @@ public class UnitClass : DestroyableObject
         }
     }
 
+    /*
+     * A function which gets the current target of the unit
+     * 
+     * Returns DestroyableObject - the target of the unit
+     */
     public override DestroyableObject GetTarget()
     {
         return target;

@@ -18,6 +18,10 @@ public class NonPlayerAgent : PlayerClass
 
     [SerializeField]
     private float buildingSearchRadius;
+    [SerializeField]
+    private LayerMask enemyLayer;
+    [SerializeField]
+    private List<string> targets;
 
     private int mineCost;
     private int towerCost;
@@ -55,11 +59,16 @@ public class NonPlayerAgent : PlayerClass
     {
         if (!worldController.IsGamePaused())
         {
+            //calls tree to handle resource management
             CurrencySpendTree();
+            //calls tree to handle unit management
             UnitManagementTree();
         }
     }
 
+    /*
+     * A function which handles the management of the AI's resources
+     */
     private void CurrencySpendTree()
     {
         ActionType type = GetBestChoice();
@@ -89,7 +98,10 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
-    private void CalculatePriorities()
+    /*
+     * A function which calculates the priorites of spending currency
+     */
+    private void CalculateActionPriorities()
     {
         //sets the priority for a defensive building
         if (currentTowers < maxTowers)
@@ -138,12 +150,17 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     * A function which chooses the best choice of action to take
+     * 
+     * returns ActionType - the best choice of action
+     */
     private ActionType GetBestChoice()
     {
         ActionType bestChoice = ActionType.Mine;
         float bestChoiceCost = 0;
 
-        CalculatePriorities();
+        CalculateActionPriorities();
 
         foreach (Action building in buildingPriorities)
         {
@@ -158,6 +175,13 @@ public class NonPlayerAgent : PlayerClass
         return bestChoice;
     }
 
+    /*
+     * A function which chooses a random location within the AI's building radius for a given building
+     * 
+     * GameObject buildingPrefab - the building to be placed
+     * 
+     * Returns Location - the choice of location
+     */
     private Location ChooseLocation(GameObject buildingPrefab)
     {
         Vector2 position = new Vector2();
@@ -180,6 +204,12 @@ public class NonPlayerAgent : PlayerClass
         return new Location(position, valid);
     }
 
+    /*
+     * A function which places a given building type in the world at a given position
+     * 
+     * ActionType type - the building type to place
+     * Vector2 position - the position to place building at
+     */
     private void PlaceBuilding(ActionType type, Vector2 position)
     {
         gold -= GetBuildingCost(type);
@@ -189,6 +219,7 @@ public class NonPlayerAgent : PlayerClass
             prodPerTick++;
         }
 
+        //repaths patrol routes for idle units to prevent collisions and units getting stuck
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
         foreach (AIUnit unit in idleUnits)
         {
@@ -201,6 +232,13 @@ public class NonPlayerAgent : PlayerClass
         allBuildings.Add(worldController.PlaceBuilding(position, GetBuildingPrefab(type), this));
     }
 
+    /*
+     * A function which gets the prefab of a specified action type
+     * 
+     * ActionType type - the type in question
+     * 
+     * Returns GameObject - the prefab of type
+     */
     private GameObject GetBuildingPrefab(ActionType type)
     {
         switch (type)
@@ -216,6 +254,11 @@ public class NonPlayerAgent : PlayerClass
         return null;
     }
 
+    /*
+     * A function which increases the internal counter for the given building type
+     * 
+     * ActionType type - the type to increase counter of
+     */
     private void IncreaseBuildingCounter(ActionType type)
     {
         switch (type)
@@ -232,6 +275,13 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     * A function which calculates if there are remaining builds left of a given building type
+     * 
+     * ActionType type - the type of building
+     * 
+     * Returns bool - true if there are remaining build left of the specified type, else false
+     */
     private bool RemainingBuilds(ActionType type)
     {
         switch (type)
@@ -247,6 +297,13 @@ public class NonPlayerAgent : PlayerClass
         return false;
     }
 
+    /*
+     * A function which gets the Action for a given ActionType
+     * 
+     * ActionType type - the ActionType in question
+     * 
+     * Returns Action - the action for the given type or null if one does not exist 
+     */
     private Action GetInfo(ActionType type)
     {
         foreach (Action info in buildingPriorities)
@@ -260,6 +317,13 @@ public class NonPlayerAgent : PlayerClass
         return null;
     }
 
+    /*
+     * A function which gets the cost of a given ActionType
+     * 
+     * ActionType type - the type to get cost of
+     * 
+     * Returns int - the cost of the given type or -1 if type is not found
+     */
     private int GetBuildingCost(ActionType type)
     {
         switch (type)
@@ -275,6 +339,11 @@ public class NonPlayerAgent : PlayerClass
         return -1;
     }
 
+    /*
+     * A function which calculates the number of enemy units nearby to the base
+     * 
+     * Returns int - the number of enemy units
+     */
     private int NearbyThreatsCount()
     {
         HashSet<DestroyableObject> nearbyUnits = new HashSet<DestroyableObject>();
@@ -291,6 +360,11 @@ public class NonPlayerAgent : PlayerClass
         return nearbyUnits.Count;
     }
 
+    /*
+     * A function which calculates the maximum number of units for the current count of barracks
+     * 
+     * Returns int - the maximum unit count
+     */
     private int GetMaxUnits()
     {
         int maxUnits = 0;
@@ -306,6 +380,13 @@ public class NonPlayerAgent : PlayerClass
         return maxUnits;
     }
 
+    /*
+     * A function which buys and spawns a new unit of given type at a given position
+     * 
+     * Vector2 position - the position to spawn at
+     * GameObject prefab - the prefab of the unit to spawn
+     * Barracks home - the barracks that the unit will belong to
+     */
     private void BuyUnit(Vector2 position, GameObject prefab, Barracks home)
     {
         UnitClass unitClass = prefab.GetComponent<UnitClass>();
@@ -321,6 +402,11 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     * A function which gets a barracks with space for more units if one is availiable
+     * 
+     * Returns Barracks - an barracks with space for more units or null if none are avaliable
+     */
     private Barracks GetEmptyBarracks()
     {
         foreach (Building building in allBuildings)
@@ -361,6 +447,9 @@ public class NonPlayerAgent : PlayerClass
         allBuildings.Remove(building);
     }
 
+    /*
+     * A function which handles actions of units
+     */
     private void UnitManagementTree()
     {
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
@@ -396,6 +485,12 @@ public class NonPlayerAgent : PlayerClass
             }
         }
     }
+
+    /*
+     * A function which gets all the units which are currently awaiting instruction
+     * 
+     * Returns List<AIUnit> - the idle units
+     */
     private List<AIUnit> GetCurrentlyIdleUnits()
     {
         List<AIUnit> idleUnits = new List<AIUnit>();
@@ -410,6 +505,13 @@ public class NonPlayerAgent : PlayerClass
         return idleUnits;
     }
 
+    /*
+     * A function which selects the highest priority enemy structure to attack
+     * 
+     * float currentStrength - the current strength of the ai force as a float
+     * 
+     * Returns Building - the highest priority building
+     */
     private Building ChooseBuildingForAttack(float currentStrength)
     {
         Building bestChoice = null;
@@ -437,6 +539,13 @@ public class NonPlayerAgent : PlayerClass
         return bestChoice;
     }
 
+    /*
+     * A function which calculates the priority of a given building
+     * 
+     * Building building - the building in question
+     * 
+     * Returns float - the priority of the building
+     */
     private float CalculateBuildingPriority(Building building)
     {
         float distance = Vector2.Distance(transform.position, building.transform.position);
@@ -444,10 +553,18 @@ public class NonPlayerAgent : PlayerClass
         return (1f / distance) * CalculateBuildingStrength(building);
     }
 
-    private float CalculateBuildingStrength(Building building)
+    /*
+     * A function which calculates the combat strength of a given building and its surroundings
+     * 
+     * Building building - the building in question
+     * 
+     * Returns float - the strength of the building
+     */
+    public float CalculateBuildingStrength(Building building)
     {
-        float threatLevel = building.threatLevel;
-        List<DestroyableObject> nearbyUnits = building.GetNearbyObjects(buildingSearchRadius, player.playerUnitMask);
+        float threatLevel = 0;
+        List<DestroyableObject> nearbyUnits = building.GetNearbyObjects(buildingSearchRadius, enemyLayer, targets);
+        //Debug.Log(nearbyUnits.Count);
         foreach (DestroyableObject enemy in nearbyUnits)
         {
             threatLevel += enemy.threatLevel;
@@ -455,6 +572,11 @@ public class NonPlayerAgent : PlayerClass
         return threatLevel;
     }
 
+    /*
+     * A function which calculates the combat strength of all current units
+     * 
+     * Returns float - the strength of all units
+     */
     private float CalculateCurrentStrength()
     {
         float strength = 0f;
@@ -467,6 +589,15 @@ public class NonPlayerAgent : PlayerClass
         return strength;
     }
 
+    /*
+     * A function which calculates a list of the best units for attacking an objective
+     * 
+     * Vector2 destination - the position to attack
+     * float strength - the strength of the position
+     * List<AIUnit> idleUnits - the list of units to select from
+     * 
+     * Returns List<UnitClass> - a list of the best choice of units for the attack or null if not enough units are availiable
+     */
     private List<UnitClass> UnitsForAttack(Vector2 destination, float strength, List<AIUnit> idleUnits)
     {
         List<UnitClass> units = new List<UnitClass>();
@@ -495,27 +626,62 @@ public class NonPlayerAgent : PlayerClass
         return null;
     }
 
+    /*
+     * A function for compating two attacking agents based on their distance
+     * 
+     * AttackingAgent agent1 - the first agent
+     * AttackingAgent agent2 - the second agent
+     */
     private int SortAgentByDistance(AttackingAgent agent1, AttackingAgent agent2)
     {
         return agent1.distance.CompareTo(agent2.distance);
     }
 
+    /*
+     * A function which issues an attack command for a given building to a given list of units
+     * 
+     * Building building - the building to attack
+     * List<UnitClass> selectedUnits - the units selected for the attack
+     */
     private void IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
     {
-        Vector2 destination = building.transform.position;
-        if(FindPaths(destination, selectedUnits))
+        if(FindPaths(building, selectedUnits))
         {
             building.beingAttacked = true;
         }
     }
 
-    public bool FindPaths(Vector2 destination, List<UnitClass> selectedUnits)
+    /*
+     * A function which issues a retreat command for a given unit group
+     * 
+     * UnitGroup group - the group to retreat
+     */
+    public void IssueRetreatCommand(UnitGroup group)
     {
+        //find a position to patrol to
+        Vector2 position = Random.insideUnitCircle * buildRadius;
+        position += (Vector2)transform.position;
+        FindPaths(position, group);
+    }
+
+    /*
+     * A function which finds and applies paths to a given position to a given list of units
+     * 
+     * Building building - the building to path to
+     * List<UnitClass> selectedUnits - the list of units to path
+     * 
+     * Returns bool - true if the pathing was a success or partial success else false
+     */
+    public bool FindPaths(Building building, List<UnitClass> selectedUnits)
+    {
+        Vector2 destination = building.transform.position;
         //checks if there are units selected and the position is valid
         if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
         {
             GameObject groupController = new GameObject("UnitGroup");
             UnitGroup group = groupController.AddComponent<UnitGroup>();
+            group.SetDestination(building);
+            group.SetOwner(this);
             List<HierarchicalNode> path = null;
             HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
 
@@ -574,6 +740,87 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     * A function which finds and applies paths to a given position to a given list of units
+     * 
+     * Vector2 destination - the position to path to
+     * UnitGroup existingGroup - an existing unitgroup to apply a path to
+     * 
+     * Returns bool - true if the pathing was a success or partial success else false
+     */
+    public bool FindPaths(Vector2 destination, UnitGroup existingGroup)
+    {
+        List<UnitClass> selectedUnits = existingGroup.group;
+
+        foreach(UnitClass unit in selectedUnits)
+        {
+            unit.StopMoving();
+        }
+
+        //checks if there are units selected and the position is valid
+        if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
+        {
+            existingGroup.SetDestination(null);
+            List<HierarchicalNode> path = null;
+            HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
+
+            while (path == null && selectedUnits.Count > 0)
+            {
+                //if destination is unreachable
+                if (destinationNode == null)
+                {
+                    selectedUnits.Clear();
+                    continue;
+                }
+
+                path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
+
+                //if no path is found
+                if (path == null)
+                {
+                    selectedUnits.RemoveAt(0);
+                }
+                else
+                {
+                    selectedUnits[0].SetPath(path, existingGroup, destination);
+
+                    for (int i = 1; i < selectedUnits.Count; i++)
+                    {
+                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
+                        if (mergingPath == null)
+                        {
+                            selectedUnits.RemoveAt(i);
+                        }
+                        else
+                        {
+                            selectedUnits[i].SetPath(mergingPath, existingGroup, destination);
+                        }
+                    }
+                }
+            }
+
+            worldController.RemoveNodeFromGraph(destinationNode);
+
+            if (selectedUnits.Count > 0)
+            {
+                existingGroup.group = selectedUnits;
+                return true;
+            }
+            else
+            {
+                Destroy(existingGroup.gameObject);
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /*
+     * A class which holds a position and a bool if the position is valid or not
+     */
     private class Location
     {
         public Vector2 position;
@@ -586,6 +833,9 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     *  A class which holds an action type and priority of said action
+     */
     private class Action
     {
         public ActionType type;
@@ -598,6 +848,9 @@ public class NonPlayerAgent : PlayerClass
         }
     }
 
+    /*
+     *  A class which holds a unit and that units distance from a position
+     */
     private class AttackingAgent
     {
         public UnitClass unit;

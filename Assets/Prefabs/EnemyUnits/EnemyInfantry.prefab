@@ -63,7 +63,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nearbyThreats: []
-  target: {fileID: 0}
   targets:
   - PlayerBuilding
   - PlayerUnit
@@ -434,6 +433,7 @@ MonoBehaviour:
   destination: {x: 0, y: 0}
   flock: {fileID: 0}
   maxSpeed: 10
+  timer: 0
   attackCooldown: 1
   target: {fileID: 0}
   enemyLayer:
