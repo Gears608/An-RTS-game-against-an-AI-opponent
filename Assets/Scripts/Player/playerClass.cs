@@ -61,11 +61,27 @@ public class PlayerClass : MonoBehaviour
      * 
      * Building building - the building to remove
      */
-    public virtual void RemoveBuilding(Building building)
+    public void RemoveBuilding(Building building)
     {
+        if (building is Barracks)
+        {
+            currentBarracks--;
+        }
+        else if (building is GoldMine)
+        {
+            currentMines--;
+        }
+        else if (building is Tower)
+        {
+            currentTowers--;
+        }
+
         allBuildings.Remove(building);
     }
 
+    /*
+     * A function which returns the current unit count of this player
+     */
     public int GetUnitCount()
     {
         return allUnits.Count;

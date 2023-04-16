@@ -6,9 +6,9 @@ using TMPro;
 
 public class PlayerAgent : PlayerClass
 {
-    private enum Modes { Building, Managing, Destroying, Interacting }
+    private enum State { Building, Managing, Destroying, Interacting }
     [SerializeField]
-    private Modes mode;
+    private State mode;
 
     protected Camera playerCam; // initialises a variable to hold the camera
     [SerializeField]
@@ -40,7 +40,7 @@ public class PlayerAgent : PlayerClass
     private void Start()
     {
         playerCam = Camera.main;  // gets the main camera
-        mode = Modes.Managing;
+        mode = State.Managing;
         currentBarracks = 0;
 
         allUnits = new List<UnitClass>();
@@ -60,20 +60,20 @@ public class PlayerAgent : PlayerClass
 
             switch (mode)
             {
-                case Modes.Managing:
+                case State.Managing:
                     UnitSelection();
                     if (Input.GetMouseButtonDown(1))
                     {
                         FindPaths();
                     }
                     break;
-                case Modes.Building:
+                case State.Building:
                     BuildingLoop();
                     break;
-                case Modes.Destroying:
+                case State.Destroying:
                     DestroyLoop();
                     break;
-                case Modes.Interacting:
+                case State.Interacting:
                     break;
             }
         }
@@ -134,7 +134,7 @@ public class PlayerAgent : PlayerClass
                     {
                         Building z = selection.GetComponentInParent<Building>();
                         popupWindow.PopulateWindow(z.buildingName, z.infoText);
-                        mode = Modes.Interacting;
+                        mode = State.Interacting;
                         if (z.enableUnitMenu)
                         {
                             unitMenu.SetActive(true);
@@ -324,16 +324,16 @@ public class PlayerAgent : PlayerClass
     {
         if (!worldController.IsGamePaused())
         {
-            if (mode != Modes.Building)
+            if (mode != State.Building)
             {
                 buildingMenu.SetActive(true);
-                mode = Modes.Building;
+                mode = State.Building;
                 selectionBox.gameObject.SetActive(false);
             }
             else
             {
                 DisableUI();
-                mode = Modes.Managing;
+                mode = State.Managing;
             }
         }
     }
@@ -345,14 +345,14 @@ public class PlayerAgent : PlayerClass
     {
         if (!worldController.IsGamePaused())
         {
-            if (mode != Modes.Destroying)
+            if (mode != State.Destroying)
             {
                 DisableUI();
-                mode = Modes.Destroying;
+                mode = State.Destroying;
             }
             else
             {
-                mode = Modes.Managing;
+                mode = State.Managing;
             }
         }
     }
@@ -372,7 +372,7 @@ public class PlayerAgent : PlayerClass
         {
             Destroy(child.gameObject);
         }
-        mode = Modes.Managing;
+        mode = State.Managing;
     }
 
     /*

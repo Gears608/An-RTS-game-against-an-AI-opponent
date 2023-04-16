@@ -32,6 +32,9 @@ public class Tower : Building
         }
     }
 
+    /*
+     * A function which handles when and at what the tower should fire at
+     */
     private void Attack()
     {
         timer += Time.deltaTime;
@@ -43,15 +46,12 @@ public class Tower : Building
         }
         else
         {
-            if (timer >= attackCooldown)
-            {
-                DoAction();
-            }
+            DoAction();
         }
     }
 
     /*
-     * A function which decides and sets the target of the unit
+     * A function which decides and sets the target of the tower
      */
     private void DecideTarget()
     {
@@ -76,31 +76,47 @@ public class Tower : Building
             }
             if (target != null)
             {
+                //increases the targets attackers count
                 target.attackersCount++;
             }
         }
     }
 
+    /*
+     * A function which stops the tower from attacking
+     */
     public override void StopAttacking()
     {
         target = null;
     }
+
+    /*
+     * A function which handles the attack action of the tower
+     */
     private void DoAction()
     {
-        //produced a projectile like effect using a line
-        projectileRenderer.enabled = true;
-        projectileRenderer.SetPosition(0, (Vector2)transform.position + new Vector2(0, 0.5f));
-        projectileRenderer.SetPosition(1, target.transform.GetChild(1).position);
-        //damages enemy
-        target.health -= damage;
-        //resets timer
-        timer = 0f;
+        if (timer >= attackCooldown)
+        {
+            //produced a projectile like effect using a line
+            projectileRenderer.enabled = true;
+            projectileRenderer.SetPosition(0, transform.position);
+            projectileRenderer.SetPosition(1, target.transform.GetChild(1).position);
+            //damages enemy
+            target.health -= damage;
+            //resets timer
+            timer = 0f;
+        }
         if (timer >= attackCooldown / 4f)
         {
             projectileRenderer.enabled = false;
         }
     }
 
+    /*
+     * A function which returns the current target of the tower
+     * 
+     * Returns DestroyableObject - the tower's target
+     */
     public override DestroyableObject GetTarget()
     {
         return target;

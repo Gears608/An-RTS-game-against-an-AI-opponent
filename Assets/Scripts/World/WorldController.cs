@@ -591,6 +591,47 @@ public class WorldController : MonoBehaviour
         return tileMap.IsValidPosition(position);
     }
 
+    /*
+     * A function which gets the nearest empty tile from a given position
+     * 
+     * Vector2 position - the start position
+     * 
+     * Returns Vector2 - the position of the nearest clear tile
+     */
+    public Vector2 GetNearbyClearTile(Vector2 position)
+    {
+        List<Vector2Int> openIndex = new List<Vector2Int>();
+        List<Vector2Int> closedIndex = new List<Vector2Int>();
+
+        openIndex.Add(tileMap.GetIndexFromWorldPosition(position));
+        bool clearTileFound = false;
+
+        while (!clearTileFound)
+        {
+            Vector2Int currentIndex = openIndex[0];
+            openIndex.Remove(currentIndex);
+            closedIndex.Add(currentIndex);
+
+            if(tileMap.GetObject(currentIndex.x, currentIndex.y) == 255)
+            {
+                List<Vector2Int> neighbours = tileMap.GetCardinalNeighbours(currentIndex.x, currentIndex.y);
+                foreach(Vector2Int neighbour in neighbours)
+                {
+                    if(!openIndex.Contains(neighbour) && !closedIndex.Contains(neighbour))
+                    {
+                        openIndex.Add(neighbour);
+                    }
+                }
+            }
+            else
+            {
+                return tileMap.GetWorldPositionFromIndex(currentIndex.x, currentIndex.y);
+            }
+        }
+
+        return new Vector2(-1, -1);
+    }
+
     #endregion
 
     #region Building
@@ -965,7 +1006,7 @@ public class WorldController : MonoBehaviour
             //the merging bit
             if (path.Contains(currentNode))
             {
-                Debug.Log("Merging Path Found");
+                //Debug.Log("Merging Path Found");
                 List<HierarchicalNode> output = path.GetRange(0, path.IndexOf(currentNode));
                 output.Add(currentNode);
                 while (currentNode.previousNode != null)
@@ -1053,7 +1094,6 @@ public class WorldController : MonoBehaviour
         }
 
         HierarchicalNode destinationNode = AddNodeToGraph(destinationPos);
-        //Debug.Log("Temp destination added: "+destinationNode.x +", "+destinationNode.y);
 
         while (openList.Count > 0)
         {
@@ -1079,7 +1119,6 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                //Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
@@ -1096,7 +1135,6 @@ public class WorldController : MonoBehaviour
                 }
 
                 RemoveNodeFromGraph(destinationNode);
-                //Debug.Log("Temp destination removed: " + destinationNode.x + ", " + destinationNode.y);
                 return output;
             }
 
@@ -1129,7 +1167,6 @@ public class WorldController : MonoBehaviour
         }
 
         RemoveNodeFromGraph(destinationNode);
-        //Debug.Log("Temp destination removed");
         return null;
     }
 

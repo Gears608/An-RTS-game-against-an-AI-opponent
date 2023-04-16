@@ -392,7 +392,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   health: 1000
   attackersCount: 0
-  threatLevel: 0.1
+  threatLevel: 5
+  beingAttacked: 0
   worldController: {fileID: 0}
   owner: {fileID: 0}
   height: 2
@@ -400,8 +401,4 @@ MonoBehaviour:
   cost: 0
   buildingName: Core
   enableUnitMenu: 0
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  searchRadius: 0
   infoText: The core of the base; must be kept safe.

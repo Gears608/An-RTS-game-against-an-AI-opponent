@@ -7,12 +7,18 @@ public class InfantryClass : UnitClass
     [SerializeField]
     private LineRenderer projectileRenderer;
 
+    /*
+     * A function which stops the unit from attacking
+     */
     public override void StopAttacking()
     {
         base.StopAttacking();
         projectileRenderer.enabled = false;
     }
 
+    /*
+     * A function which handles the attack functionality action of the unit
+     */
     public override void DoUnitAction()
     {
         if (timer >= attackCooldown)

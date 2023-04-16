@@ -63,11 +63,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nearbyThreats: []
-  target: {fileID: 0}
   targets:
   - EnemyUnit
   - EnemyBuilding
-  thisEntity: {fileID: 0}
+  thisEntity: {fileID: 1883489194412529925}
 --- !u!120 &7572932332862147644
 LineRenderer:
   m_ObjectHideFlags: 0

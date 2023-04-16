@@ -22,24 +22,34 @@ public class Barracks : Building
 
     protected override void Update()
     {
-        if(health == 0)
+        //if this barracks dies
+        if(health <= 0)
         {
+            //destroy all units associated with it
             foreach(UnitClass unit in units)
             {
                 unit.health = 0;
             }
         }
 
-        //owner.gold -= unitCount;
-
         base.Update();
     }
 
+    /*
+     * A function which gets all the units belonging to this barracks
+     * 
+     * Returns List<UnitClass> - a list of units associated with this barracks
+     */
     public List<UnitClass> GetUnits()
     {
         return units;
     }
 
+    /*
+     * A function which assigns a given unit to this barracks
+     * 
+     * UnitClass unit - the unit to assign
+     */
     public void AddUnit(UnitClass unit)
     {
         units.Add(unit);
@@ -47,6 +57,11 @@ public class Barracks : Building
         unitCount++;
     }
 
+    /*
+     * A function which unassign a given unit with this barracks
+     * 
+     * UnitClass unit - the unit to unassign
+     */
     public void RemoveUnit(UnitClass unit)
     {
         units.Remove(unit);

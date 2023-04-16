@@ -5,7 +5,7 @@ using UnityEditor;
 
 public class UnitClass : DestroyableObject
 {
-    protected enum State { Moving, Attacking, Idle, Patrol }
+    protected enum State { Moving, Attacking, Idle, Patrolling, Defending }
     protected State currentState;
     private State previousState;
 
@@ -61,7 +61,7 @@ public class UnitClass : DestroyableObject
     {
         if (!worldController.IsGamePaused())
         {
-            if (health == 0)
+            if (health <= 0)
             {
                 if (home != null)
                 {
@@ -95,7 +95,7 @@ public class UnitClass : DestroyableObject
         Vector2 alignmentSteer = new Vector2();
         Vector2 seperationSteer = new Vector2();
 
-        if (currentState == State.Moving || currentState == State.Patrol)
+        if (currentState == State.Moving || currentState == State.Patrolling || currentState == State.Defending)
         {
             flowSteer = FlowFieldSteering();
             if (flock != null)
@@ -142,6 +142,9 @@ public class UnitClass : DestroyableObject
         }
     }
 
+    /*
+     * A function which starts the units attacking
+     */
     public void StartAttacking()
     {
         previousState = currentState;
@@ -198,7 +201,6 @@ public class UnitClass : DestroyableObject
             this.flock.RemoveUnit(this);
             this.flock = flock;
         }
-        this.hierarchicalPath.Clear();
         currentFlowField = null;
 
         this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
@@ -374,6 +376,9 @@ public class UnitClass : DestroyableObject
         return target;
     }
 
+    /*
+     * A function which handles contains the attack action of the unit; overriden in specific unit classes for functionality
+     */
     public virtual void DoUnitAction(){}
 
     private void OnDrawGizmosSelected()

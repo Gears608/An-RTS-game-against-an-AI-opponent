@@ -13,18 +13,15 @@ public class Building : DestroyableObject
 
     public string infoText;
 
-    protected override void Start()
-    {
-        base.Start();
-    }
-
     protected override void Update()
     {
-        base.Update();
-
-        if(health == 0)
+        //if this building dies
+        if (health <= 0)
         {
+            //remove it from the owners building list
             owner.RemoveBuilding(this);
         }
+
+        base.Update();
     }
 }

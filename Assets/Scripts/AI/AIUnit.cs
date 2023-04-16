@@ -30,25 +30,55 @@ public class AIUnit : UnitClass
         }
     }
 
+    /*
+     * A function which puts the unit into patrol state
+     */
     public void SetPatrol()
     {
-        currentState = State.Patrol;
+        currentState = State.Patrolling;
     }
 
+    /*
+     * A function which removes the unit from patrol state
+     */
     public void StopPatrol()
     {
         currentState = State.Idle;
     }
 
+    /*
+     * A function which puts the unit into defending state
+     */
+    public void SetDefending()
+    {
+        currentState = State.Defending;
+    }
+
+    /*
+     * A function which returns whether the unit is in idle state or not
+     * 
+     * Returns bool - true if the unit is idle else false
+     */
     public bool IsIdle()
     {
         return currentState == State.Idle;
     }
+
+    /*
+     * A function which returns whether the unit is in patrol state or not
+     * 
+     * Reuturns bool - true if the unit is patrolling else false
+     */
     public bool IsPatrolling()
     {
-        return currentState == State.Patrol;
+        return currentState == State.Patrolling;
     }
 
+    /*
+     * A function which returns whether or not the unit is ready for a new patrol route or not
+     * 
+     * Returns bool - true if the unit is ready for a new patrol else false
+     */
     public bool ReadyForPatrol()
     {
         if (currentIdleTime >= idleTime)
@@ -61,11 +91,17 @@ public class AIUnit : UnitClass
         }
     }
 
+    /*
+     * A function which sets a new patrol route for the unit
+     * 
+     * List<HierarchicalNode> route - the hierarchical route of the unit represented as hierarchical nodes
+     * Vector2 destination - the destination position of the unit
+     */
     public void SetPatrolRoute(List<HierarchicalNode> route, Vector2 destination)
     {
         idleTime = Random.Range(minIdleTime, maxIdleTime);
         currentIdleTime = 0f;
         SetPath(route, null, destination);
-        currentState = State.Patrol;
+        currentState = State.Patrolling;
     }
 }

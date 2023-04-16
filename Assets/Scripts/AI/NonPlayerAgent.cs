@@ -1,9 +1,10 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class NonPlayerAgent : PlayerClass
 {
+    List<UnitGroup> unitGroups;
+
     private int prodPerTick; //the amount of curreny being generated per tick
 
     [SerializeField]
@@ -18,10 +19,13 @@ public class NonPlayerAgent : PlayerClass
 
     [SerializeField]
     private float buildingSearchRadius;
+    public LayerMask enemyLayer;
+    public List<string> targets;
+
     [SerializeField]
-    private LayerMask enemyLayer;
+    private LayerMask friendlyLayer;
     [SerializeField]
-    private List<string> targets;
+    private List<string> friendlyTags;
 
     private int mineCost;
     private int towerCost;
@@ -53,6 +57,8 @@ public class NonPlayerAgent : PlayerClass
         mineCost = minePrefab.GetComponent<Building>().cost;
         barracksCost = barracksPrefab.GetComponent<Building>().cost;
         towerCost = towerPrefab.GetComponent<Building>().cost;
+
+        unitGroups = new List<UnitGroup>();
     }
 
     protected void Update()
@@ -425,49 +431,112 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
-     * A function which removes a unit from the units list
-     * 
-     * GameObject unit - the unit to remove
-     */
-    public override void RemoveBuilding(Building building)
-    {
-        if (building is Barracks)
-        {
-            currentBarracks--;
-        }
-        else if (building is GoldMine)
-        {
-            currentMines--;
-        }
-        else if (building is Tower)
-        {
-            currentTowers--;
-        }
-
-        allBuildings.Remove(building);
-    }
-
-    /*
      * A function which handles actions of units
      */
     private void UnitManagementTree()
     {
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
 
+        //check for defence orders
+        foreach (Building building in allBuildings)
+        {
+            float buildingStrength = CalculateBuildingStrength(building, friendlyLayer, friendlyTags);
+            float enemyPresence = CalculateBuildingStrength(building, enemyLayer, targets) - building.threatLevel;
+            
+            //if there is a large enemy presence round a building
+            if(buildingStrength < enemyPresence)
+            {
+                //bring in more units to defend
+
+                //if there are enough idle units to defend
+                if(CalculateCurrentStrength(idleUnits) >= enemyPresence)
+                {
+                    //issue defend command to sublist of idle units
+                    List<UnitClass> attackForce = UnitsForAttack(building.transform.position, CalculateBuildingStrength(building, enemyLayer, targets), idleUnits);
+                    if (attackForce != null)
+                    {
+                        UnitGroup newGroup = IssueAttackCommand(building, attackForce);
+                        if (newGroup != null)
+                        {
+                            newGroup.SetDefending();
+                        }
+                        foreach (AIUnit unit in attackForce)
+                        {
+                            unit.SetDefending();
+                        }
+                    }
+                }
+                else if(CalculateCurrentStrength(GetAllUnits()) >= enemyPresence)
+                {
+                    //issue defend command to sublist of all units
+
+                    //get required units from idle units
+                    List<UnitClass> attackForce = new List<UnitClass>();
+
+                    foreach(UnitClass unit in idleUnits)
+                    {
+                        attackForce.Add(unit);
+                    }
+
+                    //get remaining required units from already busy units
+                    List<UnitGroup> groupsToAdd = UnitGroupForDefence(building.transform.position, enemyPresence - CalculateCurrentStrength(idleUnits));
+
+                    if (groupsToAdd != null)
+                    {
+                        foreach (UnitGroup group in groupsToAdd)
+                        {
+                            attackForce.AddRange(group.group);
+                        }
+                    }
+
+                    UnitGroup newGroup = IssueAttackCommand(building, attackForce);
+                    if(newGroup != null)
+                    {
+                        newGroup.SetDefending();
+                        foreach (AIUnit unit in attackForce)
+                        {
+                            unit.SetDefending();
+                        }
+                    }
+                }
+                else
+                {
+                    //issue defend command to all units
+                    UnitGroup newGroup = IssueAttackCommand(building, allUnits);
+                    if (newGroup != null)
+                    {
+                        newGroup.SetDefending();
+                        foreach (AIUnit unit in allUnits)
+                        {
+                            unit.SetDefending();
+                        }
+                    }
+                }
+            }
+
+            idleUnits = GetCurrentlyIdleUnits();
+        }
+
+
+        //check for attack orders
         if (idleUnits.Count > 0)
         {
-            Building building = ChooseBuildingForAttack(CalculateCurrentStrength());
+            Building building = ChooseBuildingForAttack(CalculateCurrentStrength(idleUnits));
             if (building != null)
             {
-                List<UnitClass> attackForce = UnitsForAttack(building.transform.position, CalculateBuildingStrength(building), idleUnits);
-                IssueAttackCommand(building, attackForce);
+                List<UnitClass> attackForce = UnitsForAttack(building.transform.position, CalculateBuildingStrength(building, enemyLayer, targets), idleUnits);
+                //if a sufficient force is availiable 
+                if (attackForce != null)
+                {
+                    IssueAttackCommand(building, attackForce).SetAttacking();
+                }
             }
         }
 
         //get an updated list of idle units 
         idleUnits = GetCurrentlyIdleUnits();
 
-        //for each of the remain idle units
+        //check for idle patrol orders
         foreach (AIUnit unit in idleUnits)
         {
             //if the unit is ready to patrol
@@ -506,6 +575,22 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
+     * A function which gets all the units as AIUnits
+     * 
+     * Returns List<AIUnit> - all units
+     */
+    private List<AIUnit> GetAllUnits()
+    {
+        List<AIUnit> units = new List<AIUnit>();
+        foreach (AIUnit unit in allUnits)
+        {
+            units.Add(unit);
+        }
+
+        return units;
+    }
+
+    /*
      * A function which selects the highest priority enemy structure to attack
      * 
      * float currentStrength - the current strength of the ai force as a float
@@ -524,7 +609,7 @@ public class NonPlayerAgent : PlayerClass
                 //get the cost of the new building
                 float newPriority = CalculateBuildingPriority(building) * 1.2f;
                 //if the new building is weaker than the current avaliable forces
-                if (CalculateBuildingStrength(building) < currentStrength)
+                if (CalculateBuildingStrength(building, enemyLayer, targets) < currentStrength)
                 {
                     //if the new building is a better choice
                     if (choicePriority < newPriority)
@@ -550,7 +635,7 @@ public class NonPlayerAgent : PlayerClass
     {
         float distance = Vector2.Distance(transform.position, building.transform.position);
         //priority scales on distance from base and strength around building
-        return (1f / distance) * CalculateBuildingStrength(building);
+        return (1f / distance) * CalculateBuildingStrength(building, enemyLayer, targets);
     }
 
     /*
@@ -560,11 +645,10 @@ public class NonPlayerAgent : PlayerClass
      * 
      * Returns float - the strength of the building
      */
-    public float CalculateBuildingStrength(Building building)
+    public float CalculateBuildingStrength(Building building, LayerMask layer, List<string> tags)
     {
         float threatLevel = 0;
-        List<DestroyableObject> nearbyUnits = building.GetNearbyObjects(buildingSearchRadius, enemyLayer, targets);
-        //Debug.Log(nearbyUnits.Count);
+        List<DestroyableObject> nearbyUnits = building.GetNearbyObjects(buildingSearchRadius, layer, tags);
         foreach (DestroyableObject enemy in nearbyUnits)
         {
             threatLevel += enemy.threatLevel;
@@ -573,15 +657,17 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
-     * A function which calculates the combat strength of all current units
+     * A function which calculates the combat strength of a given list of units
      * 
-     * Returns float - the strength of all units
+     * List<AIUnit> units - the units to get strength of 
+     * 
+     * Returns float - the sum strength of all units in the list
      */
-    private float CalculateCurrentStrength()
+    public float CalculateCurrentStrength(List<AIUnit> units)
     {
         float strength = 0f;
 
-        foreach (UnitClass unit in allUnits)
+        foreach (AIUnit unit in units)
         {
             strength += unit.threatLevel;
         }
@@ -627,7 +713,47 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
-     * A function for compating two attacking agents based on their distance
+     * A function which calculates a list of the best units groups for defending an objective
+     * 
+     * Vector2 destination - the position to defend
+     * float strengthRequired - the strength required to defend the position
+     * 
+     * Returns List<UnitGroup> - a list of the best choice of unit groups for the defence or null if not enough units are availiable
+     */
+    private List<UnitGroup> UnitGroupForDefence(Vector2 destination, float strengthRequired)
+    {
+        List<UnitGroup> output = new List<UnitGroup>();
+        List<AttackingAgentGroup> agentGroups = new List<AttackingAgentGroup>();
+        float currentStrength = 0f;
+
+        foreach (UnitGroup unitGroup in unitGroups)
+        {
+            //checks if the group is already defending
+            if (!unitGroup.IsDefending())
+            {
+                //precompute distances before comparing
+                agentGroups.Add(new AttackingAgentGroup(unitGroup, Vector2.Distance(unitGroup.GetMidPoint(), destination)));
+            }
+        }
+
+        agentGroups.Sort(SortAgentGroupByDistance);
+
+        foreach(AttackingAgentGroup group in agentGroups)
+        {
+            currentStrength += group.unitGroup.GetCurrentStrength();
+            output.Add(group.unitGroup);
+            //if there is a large enough strength of units availiable
+            if(currentStrength >= strengthRequired)
+            {
+                return output;
+            }
+        }
+        //if not enough units are avaliable
+        return null;
+    }
+
+    /*
+     * A function for comparing two attacking agents based on their distance
      * 
      * AttackingAgent agent1 - the first agent
      * AttackingAgent agent2 - the second agent
@@ -638,17 +764,31 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
+     * A function for comparing two attacking agent groups based on their distance
+     * 
+     * AttackingAgentGroup agentGroup1 - the first agent
+     * AttackingAgentGroup agentGroup2 - the second agent
+     */
+    private int SortAgentGroupByDistance(AttackingAgentGroup agentGroup1, AttackingAgentGroup agentGroup2)
+    {
+        return agentGroup1.distance.CompareTo(agentGroup2.distance);
+    }
+
+    /*
      * A function which issues an attack command for a given building to a given list of units
      * 
      * Building building - the building to attack
      * List<UnitClass> selectedUnits - the units selected for the attack
      */
-    private void IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
+    private UnitGroup IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
     {
-        if(FindPaths(building, selectedUnits))
+        UnitGroup group = FindPaths(building, selectedUnits);
+        if(group != null)
         {
             building.beingAttacked = true;
         }
+
+        return group;
     }
 
     /*
@@ -672,9 +812,9 @@ public class NonPlayerAgent : PlayerClass
      * 
      * Returns bool - true if the pathing was a success or partial success else false
      */
-    public bool FindPaths(Building building, List<UnitClass> selectedUnits)
+    public UnitGroup FindPaths(Building building, List<UnitClass> selectedUnits)
     {
-        Vector2 destination = building.transform.position;
+        Vector2 destination = worldController.GetNearbyClearTile(building.transform.position);
         //checks if there are units selected and the position is valid
         if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
         {
@@ -703,20 +843,22 @@ public class NonPlayerAgent : PlayerClass
                 }
                 else
                 {
-                    selectedUnits[0].SetPath(path, group, destination);
-
-                    for (int i = 1; i < selectedUnits.Count; i++)
+                    List<UnitClass> failedPaths = new List<UnitClass>();
+                    foreach (UnitClass unit in selectedUnits)
                     {
-                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
+                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(unit.transform.position, destinationNode, path);
                         if (mergingPath == null)
                         {
-                            selectedUnits.RemoveAt(i);
+                            failedPaths.Add(unit);
                         }
                         else
                         {
-                            //Debug.Log(mergingPath.Count);
-                            selectedUnits[i].SetPath(mergingPath, group, destination);
+                            unit.SetPath(mergingPath, group, destination);
                         }
+                    }
+                    foreach(UnitClass unit in failedPaths)
+                    {
+                        selectedUnits.Remove(unit);
                     }
                 }
             }
@@ -726,17 +868,18 @@ public class NonPlayerAgent : PlayerClass
             if (selectedUnits.Count > 0)
             {
                 groupController.GetComponent<UnitGroup>().group = selectedUnits;
-                return true;
+                unitGroups.Add(group);
+                return group;
             }
             else
             {
                 Destroy(groupController);
-                return false;
+                return null;
             }
         }
         else
         {
-            return false;
+            return null;
         }
     }
 
@@ -859,6 +1002,21 @@ public class NonPlayerAgent : PlayerClass
         public AttackingAgent(UnitClass unit, float distance) 
         {
             this.unit = unit;
+            this.distance = distance;
+        }
+    }
+
+    /*
+     *  A class which holds a unit goup and that groups average distance from a position
+     */
+    private class AttackingAgentGroup
+    {
+        public UnitGroup unitGroup;
+        public float distance;
+
+        public AttackingAgentGroup(UnitGroup unitGroup, float distance)
+        {
+            this.unitGroup = unitGroup;
             this.distance = distance;
         }
     }
