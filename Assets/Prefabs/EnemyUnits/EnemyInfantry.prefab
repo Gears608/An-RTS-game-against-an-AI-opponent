@@ -347,6 +347,7 @@ GameObject:
   - component: {fileID: 4044021341136896625}
   - component: {fileID: 660551031322702795}
   - component: {fileID: 7285509850485758719}
+  - component: {fileID: 8065407891764790852}
   m_Layer: 7
   m_Name: EnemyInfantry
   m_TagString: EnemyUnit
@@ -427,6 +428,9 @@ MonoBehaviour:
   beingAttacked: 0
   worldController: {fileID: 0}
   owner: {fileID: 0}
+  moving: 0
+  defending: 0
+  patrolling: 0
   rb: {fileID: 8884702013839080553}
   spriteRenderer: {fileID: 2144500199879448808}
   floworint: 0
@@ -548,3 +552,16 @@ LineRenderer:
     generateLightingData: 0
   m_UseWorldSpace: 1
   m_Loop: 0
+--- !u!114 &8065407891764790852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8884702013839080562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 406a84b3dfe754b46830f3eb0d5a923e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  unit: {fileID: 660551031322702795}

@@ -5,9 +5,10 @@ using UnityEditor;
 
 public class UnitClass : DestroyableObject
 {
-    protected enum State { Moving, Attacking, Idle, Patrolling, Defending }
-    protected State currentState;
-    private State previousState;
+    public bool attacking;
+    public bool defending;
+    public bool patrolling;
+    public bool retreating;
 
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
@@ -19,8 +20,6 @@ public class UnitClass : DestroyableObject
     public bool floworint = false;
 
     public Vector2 destination;
-
-    public Flock flock;
 
     [SerializeField]
     private float maxSpeed;
@@ -45,8 +44,7 @@ public class UnitClass : DestroyableObject
 
     [SerializeField]
     private float attackRadius;
-    [SerializeField]
-    private AttackRadius attackTrigger;
+    public AttackRadius attackTrigger;
 
     protected override void Start()
     {
@@ -54,7 +52,6 @@ public class UnitClass : DestroyableObject
         worldController.AddUnit(this);
         hierarchicalPath = new Stack<HierarchicalNode>();
         rb = GetComponent<Rigidbody2D>();
-        currentState = State.Idle;
     }
 
     protected override void Update()
@@ -76,45 +73,24 @@ public class UnitClass : DestroyableObject
                         owner_.RemoveSelectedUnit(this);
                     }
                 }
-                if (flock != null)
-                {
-                    flock.RemoveUnit(this);
-                }
                 owner.RemoveUnit(this);
             }
             base.Update();
             CheckPath();
-            Attack();
         }
     }
 
-    public void FixedUpdate()
+    public void Movement()
     {
         Vector2 flowSteer = new Vector2();
         Vector2 cohesionSteer = new Vector2();
         Vector2 alignmentSteer = new Vector2();
         Vector2 seperationSteer = new Vector2();
-
-        if (currentState == State.Moving || currentState == State.Patrolling || currentState == State.Defending)
-        {
-            flowSteer = FlowFieldSteering();
-            if (flock != null)
-            {
-                cohesionSteer = SeekingSteering(flock.CohesionSteering(this));
-                alignmentSteer = (flock.AlignmentSteering(this));
-            }
-            seperationSteer = worldController.GetSeperation(this);
-        }
-        else
-        {
-            seperationSteer = worldController.GetSeperation(this) * 0.1f;
-        }
-
-
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + flowSteer, Color.blue);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + cohesionSteer, Color.yellow);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + alignmentSteer, Color.green);
-        //Debug.DrawLine(transform.position, (Vector2)transform.position + seperationSteer, Color.black);
+        
+        flowSteer = FlowFieldSteering();
+        cohesionSteer = SeekingSteering(worldController.CohesionSteering(this));
+        alignmentSteer = (worldController.AlignmentSteering(this));
+        seperationSteer = worldController.GetSeperation(this);
 
         Vector2 direction = flowSteer + (cohesionSteer * 0.1f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
 
@@ -142,32 +118,37 @@ public class UnitClass : DestroyableObject
         }
     }
 
-    /*
-     * A function which starts the units attacking
-     */
-    public void StartAttacking()
+    public void NotMoving()
     {
-        previousState = currentState;
-        currentState = State.Attacking;
+        Vector2 seperationSteer = worldController.GetSeperation(this) * 0.1f;
+        Vector2 desiredVelocity = seperationSteer * maxSpeed;
+        if (desiredVelocity.magnitude > 5)
+        {
+            desiredVelocity = seperationSteer.normalized * 5;
+        }
+
+        rb.AddForce(desiredVelocity);
+
+        if (rb.velocity.magnitude > maxSpeed)
+        {
+            rb.velocity = rb.velocity.normalized * maxSpeed;
+        }
+
+        if (rb.velocity.x > 0.1)
+        {
+            spriteRenderer.flipX = false;
+        }
+        else if (rb.velocity.x < -0.1f)
+        {
+            spriteRenderer.flipX = true;
+        }
     }
 
-    /*
-     * A function which stops the unit from attacking
-     */
-    public override void StopAttacking()
-    {
-        target = null;
-        currentState = previousState;
-    }
+    public virtual void Idle() { }
 
-    /*
-     * A function which returns a bool whether this unit is moving or not
-     * 
-     * Returns bool - true if in moving state, false if not
-    */
     public bool IsMoving()
     {
-        return currentState == State.Moving;
+        return retreating || attacking || defending;
     }
 
     /*
@@ -175,7 +156,9 @@ public class UnitClass : DestroyableObject
     */
     public void StopMoving()
     {
-        currentState = State.Idle;
+        attacking = false;
+        patrolling = false;
+        retreating = false;
         rb.velocity = Vector2.zero;
         currentFlowField = null;
         hierarchicalPath.Clear();
@@ -189,18 +172,9 @@ public class UnitClass : DestroyableObject
      *  Flock flock - the flock of other units heading to the destination
      *  Vector2 destination - the destination point
     */
-    public void SetPath(List<HierarchicalNode> hierarchicalPath, Flock flock, Vector2 destination)
+    public void SetPath(List<HierarchicalNode> hierarchicalPath, Vector2 destination)
     {
         this.destination = destination;
-        if(this.flock == null)
-        {
-            this.flock = flock;
-        }
-        else if(this.flock != flock)
-        {
-            this.flock.RemoveUnit(this);
-            this.flock = flock;
-        }
         currentFlowField = null;
 
         this.hierarchicalPath = new Stack<HierarchicalNode>(hierarchicalPath);
@@ -217,7 +191,6 @@ public class UnitClass : DestroyableObject
             }
         }
         currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
-        currentState = State.Moving;
     }
 
     /*
@@ -250,7 +223,7 @@ public class UnitClass : DestroyableObject
                     //recalculate the path
                     List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                     currentPath.Reverse();
-                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), flock, destination);
+                    SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), destination);
                 }
             }
         }
@@ -274,7 +247,7 @@ public class UnitClass : DestroyableObject
                 //recalculate the path
                 List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                 currentPath.Reverse();
-                SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), flock, destination);
+                SetPath(worldController.FindHierarchicalPathMerging(transform.position, destination, currentPath), destination);
             }
             else
             {
@@ -319,7 +292,7 @@ public class UnitClass : DestroyableObject
     /*
      * Function which handles attacking functionality
      */
-    private void Attack()
+    public void Attack()
     {
         timer += Time.deltaTime;
         //if the unit has no target
@@ -361,7 +334,6 @@ public class UnitClass : DestroyableObject
             if (target != null)
             {
                 target.attackersCount++;
-                StartAttacking();
             }
         }
     }
@@ -381,7 +353,7 @@ public class UnitClass : DestroyableObject
      */
     public virtual void DoUnitAction(){}
 
-    private void OnDrawGizmosSelected()
+    private void OnDrawGizmos()
     {
         GUIStyle style = new GUIStyle(GUI.skin.label);
         style.alignment = TextAnchor.MiddleCenter;
@@ -401,7 +373,7 @@ public class UnitClass : DestroyableObject
                 if (reverse.Count > 0)
                 {
                     Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, worldController.tileSize/4f));
-                    Vector2 temp = worldController.tileMap.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                    Vector2 temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
                     Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                     Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                     Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
@@ -409,13 +381,13 @@ public class UnitClass : DestroyableObject
                     while (reverse.Count > 1)
                     {
                         HierarchicalNode n = reverse.Pop();
-                        temp = worldController.tileMap.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                        temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
                         Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
 
-                        Vector2 z = worldController.tileMap.GetWorldPositionFromIndex(n.x, n.y);
+                        Vector2 z = worldController.costField.GetWorldPositionFromIndex(n.x, n.y);
                         Gizmos.DrawLine(z, temp);
 
                         hierarchicalPath.Push(n);
@@ -423,7 +395,7 @@ public class UnitClass : DestroyableObject
                     hierarchicalPath.Push(reverse.Pop());
                 }
 
-                Vector2 t = worldController.tileMap.GetWorldPositionFromIndex(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y);
+                Vector2 t = worldController.costField.GetWorldPositionFromIndex(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y);
                 Gizmos.DrawLine((Vector2)transform.position, t);
                 Gizmos.matrix = Matrix4x4.Translate(Vector2.zero);
             }

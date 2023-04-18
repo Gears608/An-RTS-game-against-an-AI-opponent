@@ -8,16 +8,14 @@ using TMPro;
 
 public class WorldController : MonoBehaviour
 {
-    public TileGrid<int> tileMap;
+    public TileGrid<int> costField;
+
+    //inputs
     public int width;
     public int height;
-
     public float tileSize;
-
     public Vector3 startPos;
-
     public TileGrid<Component> components;
-
     public int componentWidth;
     public int componentHeight;
 
@@ -64,10 +62,10 @@ public class WorldController : MonoBehaviour
             allUnits.Add(unit.GetComponent<UnitClass>());
         }
 
-        tileMap = new TileGrid<int>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
+        costField = new TileGrid<int>(width * componentWidth, height * componentHeight, tileSize, tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
         terrainMask = LayerMask.GetMask("Impassable", "EnemyBuilding", "PlayerBuilding");
 
-        components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, /*(componentHeight * tileSize / 4f)*/0));
+        components = new TileGrid<Component>(width, height, componentHeight*tileSize, componentWidth*tileSize, new Vector2((componentHeight * tileSize * height) / 2f, 0));
         cachedFlowfields = new Dictionary<(Component, Vector2Int), TileGrid<Vector2>>();
 
         Debug.Log("Generating World...");
@@ -79,7 +77,7 @@ public class WorldController : MonoBehaviour
                 {
                     for (int y1 = 0; y1 < componentHeight; y1++)
                     {
-                        tileMap.SetObject(x1 + x * componentWidth, y1 + y * componentHeight, 1);
+                        costField.SetObject(x1 + x * componentWidth, y1 + y * componentHeight, 1);
                     }
                 }
                 Vector2 pos = new Vector2(componentHeight * tileSize * height / 2f + ((x * componentWidth * tileSize - y * componentHeight * tileSize) / 2f), ((x * componentWidth * tileSize + y * componentHeight * tileSize) / 4f));
@@ -98,7 +96,6 @@ public class WorldController : MonoBehaviour
             if(component.indexX < width - 1)
             {
                 Debug.Log("Checking vertical");
-                // tileMap.GetIndexFromWorldPosition(new Vector2(component.x, component.y + (componentHeight * tileSize/2f) - tileSize/2f))
                 CheckVertical(component, new Vector2Int((component.indexX * componentWidth) + componentWidth - 1, component.indexY * componentHeight), 1);
             }
             if(component.indexY < height - 1)
@@ -179,7 +176,7 @@ public class WorldController : MonoBehaviour
     public void UpdateNodes(Vector2 position)
     {
         Component component = components.GetObject(position);
-        Vector2Int positionAsIndex = tileMap.GetIndexFromWorldPosition(position);
+        Vector2Int positionAsIndex = costField.GetIndexFromWorldPosition(position);
 
         UpdateComponent(component);
 
@@ -320,11 +317,11 @@ public class WorldController : MonoBehaviour
         {
             for (int y = component.indexY*componentHeight; y < maxY; y++)
             {
-                Vector2 position = tileMap.GetWorldPositionFromIndex(x, y);
+                Vector2 position = costField.GetWorldPositionFromIndex(x, y);
                 if (Physics2D.OverlapPointAll(position + new Vector2(0, tileSize / 4f), terrainMask, 1f, -1f).Length > 0)
                 {
                     //Debug.Log("Updated cost");
-                    tileMap.SetObject(x, y, 255);
+                    costField.SetObject(x, y, 255);
                 }
             }
         }
@@ -342,8 +339,8 @@ public class WorldController : MonoBehaviour
         int length = 0;
         for (int y = startPosIndex.y; y < startPosIndex.y + componentHeight; y++)
         {
-            int currentNodeCost = tileMap.GetObject(startPosIndex.x, y);
-            int neighbourNodeCost = tileMap.GetObject(startPosIndex.x + xModifier, y);
+            int currentNodeCost = costField.GetObject(startPosIndex.x, y);
+            int neighbourNodeCost = costField.GetObject(startPosIndex.x + xModifier, y);
 
             if (currentNodeCost < 255 && neighbourNodeCost < 255)
             {
@@ -388,8 +385,8 @@ public class WorldController : MonoBehaviour
         int length = 0;
         for (int x = startPosIndex.x; x < startPosIndex.x + componentWidth; x++)
         {
-            int currentNodeCost = tileMap.GetObject(x, startPosIndex.y);
-            int neighbourNodeCost = tileMap.GetObject(x,  startPosIndex.y + yModifier);
+            int currentNodeCost = costField.GetObject(x, startPosIndex.y);
+            int neighbourNodeCost = costField.GetObject(x,  startPosIndex.y + yModifier);
 
             if (currentNodeCost < 255 && neighbourNodeCost < 255)
             {
@@ -434,7 +431,7 @@ public class WorldController : MonoBehaviour
     {
         foreach(HierarchicalNode node in component.portalNodes)
         {
-            TileGrid<int> integrationField = CreateIntegrationField(component, tileMap.GetWorldPositionFromIndex(node.x, node.y));
+            TileGrid<int> integrationField = CreateIntegrationField(component, costField.GetWorldPositionFromIndex(node.x, node.y));
 
             foreach(HierarchicalNode node_ in component.portalNodes)
             {
@@ -443,7 +440,7 @@ public class WorldController : MonoBehaviour
                     continue;
                 }
 
-                int weight = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(node_.x, node_.y));
+                int weight = integrationField.GetObject(costField.GetWorldPositionFromIndex(node_.x, node_.y));
 
                 if (weight == -1)
                 {
@@ -464,7 +461,7 @@ public class WorldController : MonoBehaviour
     */
     public int GetNode(Vector2 position)
     {
-        return tileMap.GetObject(position);
+        return costField.GetObject(position);
     }
 
     /*
@@ -512,13 +509,13 @@ public class WorldController : MonoBehaviour
         }
 
         TileGrid<int> integrationField = CreateIntegrationField(component, position);
-        Vector2Int temp = tileMap.GetIndexFromWorldPosition(position);
+        Vector2Int temp = costField.GetIndexFromWorldPosition(position);
         HierarchicalNode newNode = new HierarchicalNode(temp.x, temp.y, component);
         component.AddNode(newNode);
 
         foreach (HierarchicalNode node in component.portalNodes)
         {
-            int weight = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(node.x, node.y));
+            int weight = integrationField.GetObject(costField.GetWorldPositionFromIndex(node.x, node.y));
             if (weight != -1)
             {
                 node.connectedNodes.Add(newNode, weight);
@@ -536,7 +533,7 @@ public class WorldController : MonoBehaviour
     public void RemoveNodeFromGraph(HierarchicalNode node)
     {
         
-        Component component = components.GetObject(tileMap.GetWorldPositionFromIndex(node.x, node.y));
+        Component component = components.GetObject(costField.GetWorldPositionFromIndex(node.x, node.y));
         component.RemoveNode(node);
     }
 
@@ -576,8 +573,8 @@ public class WorldController : MonoBehaviour
     */
     public Vector2 WorldToGridPosition(Vector2 position)
     {
-        Vector2Int index = tileMap.GetIndexFromWorldPosition(position);
-        Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(index.x, index.y);
+        Vector2Int index = costField.GetIndexFromWorldPosition(position);
+        Vector2 gridPosition = costField.GetWorldPositionFromIndex(index.x, index.y);
         return gridPosition;
     }
 
@@ -588,7 +585,7 @@ public class WorldController : MonoBehaviour
     */
     public bool IsValidPosition(Vector2 position)
     {
-        return tileMap.IsValidPosition(position);
+        return costField.IsValidPosition(position);
     }
 
     /*
@@ -603,7 +600,7 @@ public class WorldController : MonoBehaviour
         List<Vector2Int> openIndex = new List<Vector2Int>();
         List<Vector2Int> closedIndex = new List<Vector2Int>();
 
-        openIndex.Add(tileMap.GetIndexFromWorldPosition(position));
+        openIndex.Add(costField.GetIndexFromWorldPosition(position));
         bool clearTileFound = false;
 
         while (!clearTileFound)
@@ -612,9 +609,9 @@ public class WorldController : MonoBehaviour
             openIndex.Remove(currentIndex);
             closedIndex.Add(currentIndex);
 
-            if(tileMap.GetObject(currentIndex.x, currentIndex.y) == 255)
+            if(costField.GetObject(currentIndex.x, currentIndex.y) == 255)
             {
-                List<Vector2Int> neighbours = tileMap.GetCardinalNeighbours(currentIndex.x, currentIndex.y);
+                List<Vector2Int> neighbours = costField.GetCardinalNeighbours(currentIndex.x, currentIndex.y);
                 foreach(Vector2Int neighbour in neighbours)
                 {
                     if(!openIndex.Contains(neighbour) && !closedIndex.Contains(neighbour))
@@ -625,7 +622,7 @@ public class WorldController : MonoBehaviour
             }
             else
             {
-                return tileMap.GetWorldPositionFromIndex(currentIndex.x, currentIndex.y);
+                return costField.GetWorldPositionFromIndex(currentIndex.x, currentIndex.y);
             }
         }
 
@@ -646,7 +643,7 @@ public class WorldController : MonoBehaviour
     */
     public bool CheckBuildingPlacement(Vector2 position, GameObject buildingPrefab)
     {
-        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
+        Vector2Int positionIndex = costField.GetIndexFromWorldPosition(position);
         Building building = buildingPrefab.GetComponent<Building>();
 
         if(positionIndex.x > width * componentWidth || positionIndex.x < 0 || positionIndex.y > height * componentHeight || positionIndex.y < 0)
@@ -659,7 +656,7 @@ public class WorldController : MonoBehaviour
             for (int y = 0; y < building.height; y++)
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
-                if(tileMap.GetObject(pos.x, pos.y) == 255)
+                if(costField.GetObject(pos.x, pos.y) == 255)
                 {
                     return false;
                 }
@@ -676,8 +673,8 @@ public class WorldController : MonoBehaviour
     */
     public Building PlaceBuilding(Vector2 position, GameObject buildingPrefab, PlayerClass owner)
     {
-        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
-        Vector2 gridPosition = tileMap.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
+        Vector2Int positionIndex = costField.GetIndexFromWorldPosition(position);
+        Vector2 gridPosition = costField.GetWorldPositionFromIndex(positionIndex.x, positionIndex.y);
 
         GameObject buildingObject = Instantiate(buildingPrefab);
         buildingObject.transform.position = gridPosition;
@@ -693,7 +690,7 @@ public class WorldController : MonoBehaviour
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
                 positions.Add(pos);
-                tileMap.SetObject(pos.x, pos.y, 255);
+                costField.SetObject(pos.x, pos.y, 255);
             }
         }
 
@@ -715,7 +712,7 @@ public class WorldController : MonoBehaviour
             return null;
         }
 
-        Vector2Int positionIndex = tileMap.GetIndexFromWorldPosition(position);
+        Vector2Int positionIndex = costField.GetIndexFromWorldPosition(position);
 
         Collider2D buildingCollider = Physics2D.OverlapPoint(position);
         //checks that there is a collision
@@ -734,7 +731,7 @@ public class WorldController : MonoBehaviour
             {
                 Vector2Int pos = new Vector2Int(positionIndex.x + x, positionIndex.y + y);
                 positions.Add(pos);
-                tileMap.SetObject(pos.x, pos.y, 1);
+                costField.SetObject(pos.x, pos.y, 1);
             }
         }
         //updates the node graph
@@ -770,7 +767,7 @@ public class WorldController : MonoBehaviour
         List<HierarchicalNode> openList = new List<HierarchicalNode>();
         List<HierarchicalNode> closedList = new List<HierarchicalNode>();
 
-        Vector2 destinationPosition = tileMap.GetWorldPositionFromIndex(destinationNode.x, destinationNode.y);
+        Vector2 destinationPosition = costField.GetWorldPositionFromIndex(destinationNode.x, destinationNode.y);
 
         //finds the nodes accessible to the unit
         Component startComponent = components.GetObject(startPos);
@@ -856,7 +853,7 @@ public class WorldController : MonoBehaviour
     */
     public List<HierarchicalNode> FindHierarchicalPath(Vector2 startPos, Vector2 destination)
     {
-        if(tileMap.GetObject(destination) == 255)
+        if(costField.GetObject(destination) == 255)
         {
             return null;
         }
@@ -1065,9 +1062,12 @@ public class WorldController : MonoBehaviour
         //finds the nodes accessible to the unit
         Component startComponent = components.GetObject(startPos);
 
-        if (path[0].component == startComponent)
+        if (path.Count > 0)
         {
-            return path;
+            if (path[0].component == startComponent)
+            {
+                return path;
+            }
         }
 
         TileGrid<int> integrationField = CreateIntegrationField(startComponent, startPos);
@@ -1188,7 +1188,7 @@ public class WorldController : MonoBehaviour
         int minY = Mathf.Min(component.indexY, destinationComponent.indexY)*componentHeight;
         int maxY = Mathf.Max(component.indexY, destinationComponent.indexY)*componentHeight + componentHeight;
 
-        TileGrid<int> integrationField = new TileGrid<int>(maxX - minX, maxY - minY, tileSize, tileSize, tileMap.GetWorldPositionFromIndex(minX, minY));
+        TileGrid<int> integrationField = new TileGrid<int>(maxX - minX, maxY - minY, tileSize, tileSize, costField.GetWorldPositionFromIndex(minX, minY));
 
         //initial value of -1 for all positions
         for (int x = 0; x < maxX-minX; x++)
@@ -1203,7 +1203,7 @@ public class WorldController : MonoBehaviour
         List<Vector2Int> closedList = new List<Vector2Int>();
 
         //adds the destination position
-        Vector2Int destinationIndex = tileMap.GetIndexFromWorldPosition(destination);
+        Vector2Int destinationIndex = costField.GetIndexFromWorldPosition(destination);
         openList.Add(destinationIndex);
 
         //sets the destinations cost to 0
@@ -1220,7 +1220,7 @@ public class WorldController : MonoBehaviour
             openList.Remove(currentNode);
 
             //gets a list of the nodes neighbours
-            List<Vector2Int> neighbours = tileMap.GetCardinalNeighbours(currentNode.x, currentNode.y);
+            List<Vector2Int> neighbours = costField.GetCardinalNeighbours(currentNode.x, currentNode.y);
 
             //loops over all the nodes neighbours
             foreach (Vector2Int neighbourNode in neighbours)
@@ -1230,7 +1230,7 @@ public class WorldController : MonoBehaviour
                 {
                     continue;
                 }
-                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y) == 255)
+                if (costField.GetObject(neighbourNode.x, neighbourNode.y) == 255)
                 {
                     continue;
                 }
@@ -1239,14 +1239,14 @@ public class WorldController : MonoBehaviour
                     continue;
                 }
 
-                int currentNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
-                int neighbourNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
+                int currentNode_ = integrationField.GetObject(costField.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
+                int neighbourNode_ = integrationField.GetObject(costField.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
 
                 //if the cost of the neighbour is not set, or is less than the current
-                if (currentNode_ + 2 < neighbourNode_ || neighbourNode_ == -1)
+                if (currentNode_ + costField.GetObject(neighbourNode.x, neighbourNode.y)*2 < neighbourNode_ || neighbourNode_ == -1)
                 {
-                    neighbourNode_ = currentNode_ + 2;
-                    integrationField.SetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
+                    neighbourNode_ = currentNode_ + costField.GetObject(neighbourNode.x, neighbourNode.y) *2;
+                    integrationField.SetObject(costField.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
                     if (!openList.Contains(neighbourNode))
                     {
                         openList.Add(neighbourNode);
@@ -1255,7 +1255,7 @@ public class WorldController : MonoBehaviour
             }
             
             //gets a list of the nodes neighbours
-            neighbours = tileMap.GetIntercardinalNeighbours(currentNode.x, currentNode.y, 255);
+            neighbours = costField.GetIntercardinalNeighbours(currentNode.x, currentNode.y, 255);
 
             //loops over all the nodes neighbours
             foreach (Vector2Int neighbourNode in neighbours)
@@ -1265,7 +1265,7 @@ public class WorldController : MonoBehaviour
                 {
                     continue;
                 }
-                if (tileMap.GetObject(neighbourNode.x, neighbourNode.y) == 255)
+                if (costField.GetObject(neighbourNode.x, neighbourNode.y) == 255)
                 {
                     continue;
                 }
@@ -1274,14 +1274,14 @@ public class WorldController : MonoBehaviour
                     continue;
                 }
 
-                int currentNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
-                int neighbourNode_ = integrationField.GetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
+                int currentNode_ = integrationField.GetObject(costField.GetWorldPositionFromIndex(currentNode.x, currentNode.y));
+                int neighbourNode_ = integrationField.GetObject(costField.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y));
 
                 //if the cost of the neighbour is not set, or is less than the current
-                if (currentNode_ + 3 < neighbourNode_ || neighbourNode_ == -1)
+                if (currentNode_ + costField.GetObject(neighbourNode.x, neighbourNode.y) * 3 < neighbourNode_ || neighbourNode_ == -1)
                 {
-                    neighbourNode_ = currentNode_ + 3;
-                    integrationField.SetObject(tileMap.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
+                    neighbourNode_ = currentNode_ + costField.GetObject(neighbourNode.x, neighbourNode.y) * 3;
+                    integrationField.SetObject(costField.GetWorldPositionFromIndex(neighbourNode.x, neighbourNode.y), neighbourNode_);
                     if (!openList.Contains(neighbourNode))
                     {
                         openList.Add(neighbourNode);
@@ -1371,7 +1371,7 @@ public class WorldController : MonoBehaviour
         if(!cachedFlowfields.ContainsKey((component, destination)))
         {
             //creates a new flowfield
-            TileGrid<int> intField = CreateIntegrationField(component, tileMap.GetWorldPositionFromIndex(destination.x, destination.y));
+            TileGrid<int> intField = CreateIntegrationField(component, costField.GetWorldPositionFromIndex(destination.x, destination.y));
             //caches the flowfield in the dictionary
             cachedFlowfields.Add((component, destination), CreateFlowField(intField));
         }
@@ -1403,6 +1403,80 @@ public class WorldController : MonoBehaviour
      * 
      */
 
+    /*
+     * a function to get the midpoint of the flock
+     * 
+     * UnitClass unit - the unit to be moved
+     * 
+     * Returns a Vector2 which represents the midpoint of all nearby units in the flock
+     */
+    public Vector2 CohesionSteering(UnitClass unit)
+    {
+        //calculates the midpoint of the flock
+        Vector3 currentPosition = unit.transform.position;
+        Vector2 midpoint = new Vector2();
+        int nearbyCount = 0;
+
+        foreach (UnitClass member in allUnits)
+        {
+            if (member == unit)
+            {
+                continue;
+            }
+            if (Vector2.Distance(unit.transform.position, member.transform.position) < unit.seperationRadius && member.destination == unit.destination)
+            {
+                Vector2 otherPosition = member.transform.position;
+                Vector2 nearby = currentPosition - member.transform.position;
+                if (new Vector2(nearby.x, nearby.y * 2f).magnitude < 5)
+                {
+                    midpoint += otherPosition;
+                    nearbyCount++;
+                }
+            }
+        }
+
+        if (nearbyCount == 0)
+        {
+            return currentPosition;
+        }
+
+        midpoint /= nearbyCount;
+
+        //returns the midpoint
+        return midpoint;
+    }
+
+    /*
+     * a function to get the average velocity of the units around the given unit within the flock
+     * 
+     * UnitClass unit - the unit to be moved
+     * 
+     * Returns a Vector2 which is the average direction of all nearby units in the flock
+     */
+    public Vector2 AlignmentSteering(UnitClass unit)
+    {
+        Vector2 alignment = new Vector2();
+        int nearbyCount = 0;
+
+        foreach (UnitClass member in allUnits)
+        {
+            Vector2 nearby = unit.transform.position - member.transform.position;
+            if (new Vector2(nearby.x, nearby.y * 2f).magnitude < 5 && member.rb.velocity.magnitude > 0 && member.destination == unit.destination)
+            {
+                alignment += member.rb.velocity.normalized;
+                nearbyCount++;
+            }
+        }
+
+        if (nearbyCount == 0)
+        {
+            return Vector2.zero;
+        }
+
+        alignment /= nearbyCount;
+
+        return alignment.normalized;
+    }
 
     /*
      * A function which calculates the direction a given unit should move to be at distance from nearby units
@@ -1453,7 +1527,7 @@ public class WorldController : MonoBehaviour
         foreach (UnitClass other in allUnits)
         {
             Vector2 displacement = position - (Vector2)other.transform.position;
-            if (new Vector2(displacement.x, displacement.y * 2f).magnitude < unit.seperationRadius && other.IsMoving() && unit.flock == other.flock)
+            if (new Vector2(displacement.x, displacement.y * 2f).magnitude < unit.seperationRadius && other.IsMoving() && unit.destination == other.destination)
             {
                 other.StopMoving();
             }
@@ -1493,7 +1567,7 @@ public class WorldController : MonoBehaviour
     {
         GUIStyle style = new GUIStyle(GUI.skin.label);
         style.alignment = TextAnchor.MiddleCenter;
-        if (tileMap != null)
+        if (costField != null)
         {
             if (displayCost)
             {
@@ -1503,7 +1577,7 @@ public class WorldController : MonoBehaviour
                     for (int y = 0; y < height * componentHeight; y++)
                     {
                         //cost
-                        Handles.Label(tileMap.GetWorldPositionFromIndex(x, y) + new Vector2(0, tileSize/4f), tileMap.GetObject(x, y).ToString(), style);
+                        Handles.Label(costField.GetWorldPositionFromIndex(x, y) + new Vector2(0, tileSize/4f), costField.GetObject(x, y).ToString(), style);
                     }
                 }
             }
@@ -1527,7 +1601,7 @@ public class WorldController : MonoBehaviour
                         foreach (HierarchicalNode n__ in n_.connectedNodes.Keys)
                         {
                             Gizmos.DrawLine(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f));
-                            Handles.Label(Vector2.Lerp(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f) + tileMap.GetStartPosition(), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f) + tileMap.GetStartPosition(), 0.5f), n_.connectedNodes[n__].ToString());
+                            Handles.Label(Vector2.Lerp(new Vector2(((n_.x - n_.y) * tileSize / 2f), (n_.x + n_.y) * tileSize / 4f) + costField.GetStartPosition(), new Vector2((n__.x - n__.y) * tileSize / 2f, (n__.x + n__.y) * tileSize / 4f) + costField.GetStartPosition(), 0.5f), n_.connectedNodes[n__].ToString());
                         }
                     }
                 }

@@ -3,8 +3,6 @@ using UnityEngine;
 
 public class NonPlayerAgent : PlayerClass
 {
-    List<UnitGroup> unitGroups;
-
     private int prodPerTick; //the amount of curreny being generated per tick
 
     [SerializeField]
@@ -57,8 +55,6 @@ public class NonPlayerAgent : PlayerClass
         mineCost = minePrefab.GetComponent<Building>().cost;
         barracksCost = barracksPrefab.GetComponent<Building>().cost;
         towerCost = towerPrefab.GetComponent<Building>().cost;
-
-        unitGroups = new List<UnitGroup>();
     }
 
     protected void Update()
@@ -229,9 +225,9 @@ public class NonPlayerAgent : PlayerClass
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
         foreach (AIUnit unit in idleUnits)
         {
-            if (unit.IsPatrolling())
+            if (unit.patrolling)
             {
-                unit.StopMoving();
+                unit.patrolling = false;
             }
         }
 
@@ -400,11 +396,14 @@ public class NonPlayerAgent : PlayerClass
         {
             GameObject newUnit = Instantiate(prefab);
             AIUnit newUnitClass = newUnit.GetComponent<AIUnit>();
+            AIUnitFSM newUnitFSM = newUnit.GetComponent<AIUnitFSM>();
+            newUnitClass.worldController = worldController;
             allUnits.Add(newUnitClass);
             newUnitClass.owner = this;
+            newUnitFSM.Setup();
             home.AddUnit(newUnitClass);
             gold -= unitClass.cost;
-            newUnit.transform.position = position;
+            newUnit.transform.position = worldController.GetNearbyClearTile(position);
         }
     }
 
@@ -455,62 +454,17 @@ public class NonPlayerAgent : PlayerClass
                     List<UnitClass> attackForce = UnitsForAttack(building.transform.position, CalculateBuildingStrength(building, enemyLayer, targets), idleUnits);
                     if (attackForce != null)
                     {
-                        UnitGroup newGroup = IssueAttackCommand(building, attackForce);
-                        if (newGroup != null)
-                        {
-                            newGroup.SetDefending();
-                        }
-                        foreach (AIUnit unit in attackForce)
-                        {
-                            unit.SetDefending();
-                        }
-                    }
-                }
-                else if(CalculateCurrentStrength(GetAllUnits()) >= enemyPresence)
-                {
-                    //issue defend command to sublist of all units
-
-                    //get required units from idle units
-                    List<UnitClass> attackForce = new List<UnitClass>();
-
-                    foreach(UnitClass unit in idleUnits)
-                    {
-                        attackForce.Add(unit);
-                    }
-
-                    //get remaining required units from already busy units
-                    List<UnitGroup> groupsToAdd = UnitGroupForDefence(building.transform.position, enemyPresence - CalculateCurrentStrength(idleUnits));
-
-                    if (groupsToAdd != null)
-                    {
-                        foreach (UnitGroup group in groupsToAdd)
-                        {
-                            attackForce.AddRange(group.group);
-                        }
-                    }
-
-                    UnitGroup newGroup = IssueAttackCommand(building, attackForce);
-                    if(newGroup != null)
-                    {
-                        newGroup.SetDefending();
-                        foreach (AIUnit unit in attackForce)
-                        {
-                            unit.SetDefending();
-                        }
+                        IssueDefenceCommand(building, attackForce);
                     }
                 }
                 else
                 {
-                    //issue defend command to all units
-                    UnitGroup newGroup = IssueAttackCommand(building, allUnits);
-                    if (newGroup != null)
-                    {
-                        newGroup.SetDefending();
-                        foreach (AIUnit unit in allUnits)
-                        {
-                            unit.SetDefending();
-                        }
-                    }
+                    //issue defend command to sublist of all units
+
+                    //get required units from all units
+                    List<UnitClass> attackForce = UnitsForAttack(building.transform.position, enemyPresence - CalculateCurrentStrength(idleUnits), GetAllUnits());
+
+                    IssueDefenceCommand(building, attackForce);
                 }
             }
 
@@ -528,7 +482,7 @@ public class NonPlayerAgent : PlayerClass
                 //if a sufficient force is availiable 
                 if (attackForce != null)
                 {
-                    IssueAttackCommand(building, attackForce).SetAttacking();
+                    IssueAttackCommand(building, attackForce);
                 }
             }
         }
@@ -565,7 +519,7 @@ public class NonPlayerAgent : PlayerClass
         List<AIUnit> idleUnits = new List<AIUnit>();
         foreach (AIUnit unit in allUnits)
         {
-            if (unit.IsIdle() || unit.IsPatrolling())
+            if (!unit.defending && !unit.retreating && !unit.attacking)
             {
                 idleUnits.Add(unit);
             }
@@ -684,13 +638,13 @@ public class NonPlayerAgent : PlayerClass
      * 
      * Returns List<UnitClass> - a list of the best choice of units for the attack or null if not enough units are availiable
      */
-    private List<UnitClass> UnitsForAttack(Vector2 destination, float strength, List<AIUnit> idleUnits)
+    private List<UnitClass> UnitsForAttack(Vector2 destination, float strength, List<AIUnit> unitList)
     {
         List<UnitClass> units = new List<UnitClass>();
         List<AttackingAgent> agents = new List<AttackingAgent>();
         float currentStrength = 0f;
 
-        foreach (UnitClass unit in idleUnits)
+        foreach (UnitClass unit in unitList)
         {
             //precompute distances before comparing
             agents.Add(new AttackingAgent(unit, Vector2.Distance(unit.transform.position, destination)));
@@ -713,46 +667,6 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
-     * A function which calculates a list of the best units groups for defending an objective
-     * 
-     * Vector2 destination - the position to defend
-     * float strengthRequired - the strength required to defend the position
-     * 
-     * Returns List<UnitGroup> - a list of the best choice of unit groups for the defence or null if not enough units are availiable
-     */
-    private List<UnitGroup> UnitGroupForDefence(Vector2 destination, float strengthRequired)
-    {
-        List<UnitGroup> output = new List<UnitGroup>();
-        List<AttackingAgentGroup> agentGroups = new List<AttackingAgentGroup>();
-        float currentStrength = 0f;
-
-        foreach (UnitGroup unitGroup in unitGroups)
-        {
-            //checks if the group is already defending
-            if (!unitGroup.IsDefending())
-            {
-                //precompute distances before comparing
-                agentGroups.Add(new AttackingAgentGroup(unitGroup, Vector2.Distance(unitGroup.GetMidPoint(), destination)));
-            }
-        }
-
-        agentGroups.Sort(SortAgentGroupByDistance);
-
-        foreach(AttackingAgentGroup group in agentGroups)
-        {
-            currentStrength += group.unitGroup.GetCurrentStrength();
-            output.Add(group.unitGroup);
-            //if there is a large enough strength of units availiable
-            if(currentStrength >= strengthRequired)
-            {
-                return output;
-            }
-        }
-        //if not enough units are avaliable
-        return null;
-    }
-
-    /*
      * A function for comparing two attacking agents based on their distance
      * 
      * AttackingAgent agent1 - the first agent
@@ -764,44 +678,74 @@ public class NonPlayerAgent : PlayerClass
     }
 
     /*
-     * A function for comparing two attacking agent groups based on their distance
-     * 
-     * AttackingAgentGroup agentGroup1 - the first agent
-     * AttackingAgentGroup agentGroup2 - the second agent
-     */
-    private int SortAgentGroupByDistance(AttackingAgentGroup agentGroup1, AttackingAgentGroup agentGroup2)
-    {
-        return agentGroup1.distance.CompareTo(agentGroup2.distance);
-    }
-
-    /*
      * A function which issues an attack command for a given building to a given list of units
      * 
      * Building building - the building to attack
      * List<UnitClass> selectedUnits - the units selected for the attack
      */
-    private UnitGroup IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
+    private void IssueAttackCommand(Building building, List<UnitClass> selectedUnits)
     {
-        UnitGroup group = FindPaths(building, selectedUnits);
-        if(group != null)
-        {
-            building.beingAttacked = true;
-        }
+        List<UnitClass> pathableUnits = FindPaths(building, selectedUnits);
 
-        return group;
+        if (pathableUnits.Count > 0)
+        {
+            UnitGroup group = new UnitGroup(pathableUnits, building);
+            building.beingAttacked = true;
+            foreach (AIUnit unit in pathableUnits)
+            {
+                unit.defending = false;
+                unit.attacking = true;
+                unit.retreating = false;
+                unit.patrolling = false;
+
+                unit.group = group;
+            }
+        }
     }
 
     /*
-     * A function which issues a retreat command for a given unit group
-     * 
-     * UnitGroup group - the group to retreat
+     * A function which issues a retreat command 
      */
-    public void IssueRetreatCommand(UnitGroup group)
+    public void IssueRetreatCommand(AIUnit unit)
     {
+        if(unit.group != null)
+        {
+            unit.group.RemoveUnit(unit);
+        }
+
         //find a position to patrol to
         Vector2 position = Random.insideUnitCircle * buildRadius;
         position += (Vector2)transform.position;
-        FindPaths(position, group);
+        //get path to position
+        List<HierarchicalNode> path = worldController.FindHierarchicalPath(transform.position, position);
+        if (path != null)
+        {
+            unit.SetPatrolRoute(path, position);
+        }
+
+        unit.defending = false;
+        unit.attacking = true;
+        unit.retreating = false;
+        unit.patrolling = false;
+    }
+
+    /*
+     * A function which issues a defence command for a given building to a given list of units
+     * 
+     * Building building - the building to attack
+     * List<UnitClass> selectedUnits - the units selected for the attack
+     */
+    private void IssueDefenceCommand(Building building, List<UnitClass> selectedUnits)
+    {
+        List<UnitClass> group = FindPaths(building, selectedUnits);
+
+        foreach (UnitClass unit in group)
+        {
+            unit.defending = true;
+            unit.attacking = false;
+            unit.retreating = false;
+            unit.patrolling = false;
+        }
     }
 
     /*
@@ -810,18 +754,14 @@ public class NonPlayerAgent : PlayerClass
      * Building building - the building to path to
      * List<UnitClass> selectedUnits - the list of units to path
      * 
-     * Returns bool - true if the pathing was a success or partial success else false
+     * Returns List<UnitClass> - the successfully pathed units
      */
-    public UnitGroup FindPaths(Building building, List<UnitClass> selectedUnits)
+    public List<UnitClass> FindPaths(Building building, List<UnitClass> selectedUnits)
     {
         Vector2 destination = worldController.GetNearbyClearTile(building.transform.position);
         //checks if there are units selected and the position is valid
         if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
         {
-            GameObject groupController = new GameObject("UnitGroup");
-            UnitGroup group = groupController.AddComponent<UnitGroup>();
-            group.SetDestination(building);
-            group.SetOwner(this);
             List<HierarchicalNode> path = null;
             HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
 
@@ -853,7 +793,7 @@ public class NonPlayerAgent : PlayerClass
                         }
                         else
                         {
-                            unit.SetPath(mergingPath, group, destination);
+                            unit.SetPath(mergingPath, destination);
                         }
                     }
                     foreach(UnitClass unit in failedPaths)
@@ -867,97 +807,16 @@ public class NonPlayerAgent : PlayerClass
 
             if (selectedUnits.Count > 0)
             {
-                groupController.GetComponent<UnitGroup>().group = selectedUnits;
-                unitGroups.Add(group);
-                return group;
+                return selectedUnits;
             }
             else
             {
-                Destroy(groupController);
                 return null;
             }
         }
         else
         {
             return null;
-        }
-    }
-
-    /*
-     * A function which finds and applies paths to a given position to a given list of units
-     * 
-     * Vector2 destination - the position to path to
-     * UnitGroup existingGroup - an existing unitgroup to apply a path to
-     * 
-     * Returns bool - true if the pathing was a success or partial success else false
-     */
-    public bool FindPaths(Vector2 destination, UnitGroup existingGroup)
-    {
-        List<UnitClass> selectedUnits = existingGroup.group;
-
-        foreach(UnitClass unit in selectedUnits)
-        {
-            unit.StopMoving();
-        }
-
-        //checks if there are units selected and the position is valid
-        if (selectedUnits.Count > 0 && worldController.IsValidPosition(destination))
-        {
-            existingGroup.SetDestination(null);
-            List<HierarchicalNode> path = null;
-            HierarchicalNode destinationNode = worldController.AddNodeToGraph(destination);
-
-            while (path == null && selectedUnits.Count > 0)
-            {
-                //if destination is unreachable
-                if (destinationNode == null)
-                {
-                    selectedUnits.Clear();
-                    continue;
-                }
-
-                path = worldController.FindHierarchicalPath(selectedUnits[0].transform.position, destinationNode);
-
-                //if no path is found
-                if (path == null)
-                {
-                    selectedUnits.RemoveAt(0);
-                }
-                else
-                {
-                    selectedUnits[0].SetPath(path, existingGroup, destination);
-
-                    for (int i = 1; i < selectedUnits.Count; i++)
-                    {
-                        List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
-                        if (mergingPath == null)
-                        {
-                            selectedUnits.RemoveAt(i);
-                        }
-                        else
-                        {
-                            selectedUnits[i].SetPath(mergingPath, existingGroup, destination);
-                        }
-                    }
-                }
-            }
-
-            worldController.RemoveNodeFromGraph(destinationNode);
-
-            if (selectedUnits.Count > 0)
-            {
-                existingGroup.group = selectedUnits;
-                return true;
-            }
-            else
-            {
-                Destroy(existingGroup.gameObject);
-                return false;
-            }
-        }
-        else
-        {
-            return false;
         }
     }
 
@@ -1002,21 +861,6 @@ public class NonPlayerAgent : PlayerClass
         public AttackingAgent(UnitClass unit, float distance) 
         {
             this.unit = unit;
-            this.distance = distance;
-        }
-    }
-
-    /*
-     *  A class which holds a unit goup and that groups average distance from a position
-     */
-    private class AttackingAgentGroup
-    {
-        public UnitGroup unitGroup;
-        public float distance;
-
-        public AttackingAgentGroup(UnitGroup unitGroup, float distance)
-        {
-            this.unitGroup = unitGroup;
             this.distance = distance;
         }
     }

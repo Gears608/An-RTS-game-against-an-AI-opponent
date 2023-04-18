@@ -181,7 +181,7 @@ public class PlayerAgent : PlayerClass
         // while mouse held down
         if (Input.GetMouseButton(0))
         {
-            selectionBoxUpdate(mousePos);
+            SelectionBoxUpdate(mousePos);
         }
     }
 
@@ -190,7 +190,7 @@ public class PlayerAgent : PlayerClass
      * 
      * Vector2 newMousePos - the new mouse position
      */
-    private void selectionBoxUpdate(Vector2 newMousePos)
+    private void SelectionBoxUpdate(Vector2 newMousePos)
     {
         if (!selectionBox.gameObject.activeSelf)
         {
@@ -429,8 +429,6 @@ public class PlayerAgent : PlayerClass
         //checks if there are units selected and the position is valid
         if (selectedUnits.Count > 0 && worldController.IsValidPosition(mousePos))
         {
-            GameObject flockController = new GameObject("Flock");
-            Flock flock = flockController.AddComponent<Flock>();
             List<HierarchicalNode> path = null;
             HierarchicalNode destinationNode = worldController.AddNodeToGraph(mousePos);
 
@@ -448,44 +446,32 @@ public class PlayerAgent : PlayerClass
                 //if no path is found
                 if (path == null)
                 {
+                    //removes the unit from selected units since it cannot path to the destination
                     RemoveSelectedUnit(selectedUnits[0]);
                 }
                 else
                 {
-                    selectedUnits[0].SetPath(path, flock, mousePos);
-
+                    //sets the path for the leader unit
+                    selectedUnits[0].SetPath(path, mousePos);
+                    selectedUnits[0].attacking = true;
+                    //finds and sets merging paths for all subsequent units
                     for (int i = 1; i < selectedUnits.Count; i++)
                     {
                         List<HierarchicalNode> mergingPath = worldController.FindHierarchicalPathMerging(selectedUnits[i].transform.position, destinationNode, path);
+                        //removes the unit if no path can be found
                         if (mergingPath == null)
                         {
                             RemoveSelectedUnit(selectedUnits[i]);
                         }
                         else
                         {
-                            //Debug.Log(mergingPath.Count);
-                            selectedUnits[i].SetPath(mergingPath, flock, mousePos);
+                            selectedUnits[i].SetPath(mergingPath, mousePos);
+                            selectedUnits[i].attacking = true;
                         }
                     }
                 }
             }
-
             worldController.RemoveNodeFromGraph(destinationNode);
-
-            List<UnitClass> units = new List<UnitClass>();
-            foreach (UnitClass unit in selectedUnits)
-            {
-                units.Add(unit);
-            }
-
-            if (units.Count > 0)
-            {
-                flockController.GetComponent<Flock>().group = units;
-            }
-            else
-            {
-                Destroy(flockController);
-            }
         }
     }
 }

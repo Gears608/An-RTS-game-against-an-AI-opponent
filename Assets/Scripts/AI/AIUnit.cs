@@ -11,23 +11,18 @@ public class AIUnit : UnitClass
     private float idleTime;
     private float currentIdleTime;
 
+    public UnitGroup group;
+
     protected override void Start()
     {
         base.Start();
 
         idleTime = Random.Range(minIdleTime, maxIdleTime);
     }
-    protected override void Update()
-    {
-        base.Update();
 
-        if (!worldController.IsGamePaused())
-        {
-            if (currentState == State.Idle)
-            {
-                currentIdleTime += Time.deltaTime;
-            }
-        }
+    public override void Idle()
+    {
+        currentIdleTime += Time.deltaTime;
     }
 
     /*
@@ -35,7 +30,7 @@ public class AIUnit : UnitClass
      */
     public void SetPatrol()
     {
-        currentState = State.Patrolling;
+        patrolling = true;
     }
 
     /*
@@ -43,7 +38,7 @@ public class AIUnit : UnitClass
      */
     public void StopPatrol()
     {
-        currentState = State.Idle;
+        patrolling = false;
     }
 
     /*
@@ -51,27 +46,18 @@ public class AIUnit : UnitClass
      */
     public void SetDefending()
     {
-        currentState = State.Defending;
+        defending = true;
     }
 
     /*
-     * A function which returns whether the unit is in idle state or not
-     * 
-     * Returns bool - true if the unit is idle else false
+     * A function which puts the unit into retreating state
      */
-    public bool IsIdle()
+    public void SetRetreating()
     {
-        return currentState == State.Idle;
-    }
-
-    /*
-     * A function which returns whether the unit is in patrol state or not
-     * 
-     * Reuturns bool - true if the unit is patrolling else false
-     */
-    public bool IsPatrolling()
-    {
-        return currentState == State.Patrolling;
+        retreating = true;
+        attacking = false;
+        defending = false;
+        patrolling = false;
     }
 
     /*
@@ -101,7 +87,7 @@ public class AIUnit : UnitClass
     {
         idleTime = Random.Range(minIdleTime, maxIdleTime);
         currentIdleTime = 0f;
-        SetPath(route, null, destination);
-        currentState = State.Patrolling;
+        SetPath(route, destination);
+        patrolling = true;
     }
 }
