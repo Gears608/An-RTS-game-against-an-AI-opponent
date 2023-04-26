@@ -449,7 +449,7 @@ MonoBehaviour:
   showintfield: 0
   showpath: 0
   destination: {x: 0, y: 0}
-  maxSpeed: 2
+  maxSpeed: 1
   timer: 0
   attackCooldown: 1
   target: {fileID: 0}

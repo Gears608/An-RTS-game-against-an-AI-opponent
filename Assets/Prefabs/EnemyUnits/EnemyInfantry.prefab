@@ -428,15 +428,17 @@ MonoBehaviour:
   beingAttacked: 0
   worldController: {fileID: 0}
   owner: {fileID: 0}
-  moving: 0
+  attacking: 0
   defending: 0
   patrolling: 0
+  retreating: 0
   rb: {fileID: 8884702013839080553}
   spriteRenderer: {fileID: 2144500199879448808}
-  floworint: 0
+  showflowfield: 0
+  showintfield: 0
+  showpath: 0
   destination: {x: 0, y: 0}
-  flock: {fileID: 0}
-  maxSpeed: 10
+  maxSpeed: 1
   timer: 0
   attackCooldown: 1
   target: {fileID: 0}
