@@ -30,9 +30,9 @@ public class UnitFSM : StateMachine
         transition = new Transition(new GivenMoveOrder(unit), movementState);
         idleState.transitions.Add(transition);
 
-        //when the unit is given a patrol order
-        transition = new Transition(new GivenPatrolOrder(unit), movementState);
-        idleState.transitions.Add(transition);
+        //when the unit has finsihed moving
+        transition = new Transition(new NotMoving(unit), idleState);
+        movementState.transitions.Add(transition);
     }
 
     public override State GetInitialState()

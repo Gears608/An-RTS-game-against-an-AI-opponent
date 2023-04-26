@@ -1354,7 +1354,7 @@ public class WorldController : MonoBehaviour
      *  
      *  Returns a TileGrid<Vector2> in which each tile in the grid is a Vector2 which points in the direction of the route to the destination
     */
-    public TileGrid<Vector2> GetFlowField(Vector2 source, Vector2Int destination)
+    public (TileGrid<Vector2>, TileGrid<int>) GetFlowField(Vector2 source, Vector2Int destination)
     {
         //if the dictionary containing our cached flowfields is at the set limit
         
@@ -1376,7 +1376,7 @@ public class WorldController : MonoBehaviour
             cachedFlowfields.Add((component, destination), CreateFlowField(intField));
         }
         
-        return cachedFlowfields[(component, destination)];
+        return (cachedFlowfields[(component, destination)], CreateIntegrationField(component, costField.GetWorldPositionFromIndex(destination.x, destination.y)));
     }
 
     /*
@@ -1404,7 +1404,7 @@ public class WorldController : MonoBehaviour
      */
 
     /*
-     * a function to get the midpoint of the flock
+     * A function to get the midpoint of the flock
      * 
      * UnitClass unit - the unit to be moved
      * 
@@ -1423,7 +1423,7 @@ public class WorldController : MonoBehaviour
             {
                 continue;
             }
-            if (Vector2.Distance(unit.transform.position, member.transform.position) < unit.seperationRadius && member.destination == unit.destination)
+            if (Vector2.Distance(unit.transform.position, member.transform.position) < unit.seperationRadius && member.destination == unit.destination && unit.owner == member.owner)
             {
                 Vector2 otherPosition = member.transform.position;
                 Vector2 nearby = currentPosition - member.transform.position;
@@ -1447,7 +1447,7 @@ public class WorldController : MonoBehaviour
     }
 
     /*
-     * a function to get the average velocity of the units around the given unit within the flock
+     * A  function to get the average velocity of the units around the given unit within the flock
      * 
      * UnitClass unit - the unit to be moved
      * 
@@ -1458,12 +1458,12 @@ public class WorldController : MonoBehaviour
         Vector2 alignment = new Vector2();
         int nearbyCount = 0;
 
-        foreach (UnitClass member in allUnits)
+        foreach (UnitClass other in allUnits)
         {
-            Vector2 nearby = unit.transform.position - member.transform.position;
-            if (new Vector2(nearby.x, nearby.y * 2f).magnitude < 5 && member.rb.velocity.magnitude > 0 && member.destination == unit.destination)
+            Vector2 nearby = unit.transform.position - other.transform.position;
+            if (new Vector2(nearby.x, nearby.y * 2f).magnitude < unit.seperationRadius && other.rb.velocity.magnitude > 0 && other.destination == unit.destination && unit.owner == other.owner)
             {
-                alignment += member.rb.velocity.normalized;
+                alignment += other.rb.velocity.normalized;
                 nearbyCount++;
             }
         }
@@ -1488,21 +1488,21 @@ public class WorldController : MonoBehaviour
     public Vector2 GetSeperation(UnitClass unit)
     {
         Vector2 position = unit.transform.position;
-        Vector2 totalForce = new Vector2();
+        Vector2 finalDirection = new Vector2();
         int nearby = 0;
 
         foreach (UnitClass other in allUnits)
         {
-            Vector2 currentForce = position - (Vector2)other.transform.position;
+            Vector2 direction = position - (Vector2)other.transform.position;
             //checks if the unit is within the nearby radius
-            if (new Vector2(currentForce.x, currentForce.y * 2f).magnitude < unit.seperationRadius)
+            if (new Vector2(direction.x, direction.y * 2f).magnitude < unit.seperationRadius)
             {
                 nearby++;
-                float direction = currentForce.magnitude;
-                currentForce.Normalize();
+                float distance = direction.magnitude;
+                direction.Normalize();
                 float radius = other.radius + unit.radius;
 
-                totalForce += currentForce * (1 - ((direction - radius) / unit.seperationRadius - radius));
+                finalDirection += direction * (1 - ((distance - radius) / unit.seperationRadius - radius));
             }
         }
 
@@ -1512,7 +1512,7 @@ public class WorldController : MonoBehaviour
             return Vector2.zero;
         }
 
-        return totalForce.normalized;
+        return finalDirection.normalized;
     }
 
     /*

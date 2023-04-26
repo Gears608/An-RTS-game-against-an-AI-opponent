@@ -12,12 +12,15 @@ public class UnitClass : DestroyableObject
 
     private Stack<HierarchicalNode> hierarchicalPath;
     private TileGrid<Vector2> currentFlowField;
+    private TileGrid<int> intfield;
 
     public Rigidbody2D rb;
     [SerializeField]
     private SpriteRenderer spriteRenderer;
 
-    public bool floworint = false;
+    public bool showflowfield = false;
+    public bool showintfield;
+    public bool showpath;
 
     public Vector2 destination;
 
@@ -82,24 +85,9 @@ public class UnitClass : DestroyableObject
 
     public void Movement()
     {
-        Vector2 flowSteer = new Vector2();
-        Vector2 cohesionSteer = new Vector2();
-        Vector2 alignmentSteer = new Vector2();
-        Vector2 seperationSteer = new Vector2();
-        
-        flowSteer = FlowFieldSteering();
-        cohesionSteer = SeekingSteering(worldController.CohesionSteering(this));
-        alignmentSteer = (worldController.AlignmentSteering(this));
-        seperationSteer = worldController.GetSeperation(this);
+        Vector2 direction = (FlowFieldSteering() + (SeekingSteering(worldController.CohesionSteering(this)) * 0.1f) + (worldController.AlignmentSteering(this) * 0.3f) + (worldController.GetSeperation(this) * 1.2f)).normalized;
 
-        Vector2 direction = flowSteer + (cohesionSteer * 0.1f) + (alignmentSteer * 0.3f) + (seperationSteer * 1.2f);
-
-        Vector2 desiredVelocity = direction * 5;
-
-        if (desiredVelocity.magnitude > maxSpeed)
-        {
-            desiredVelocity = direction.normalized * 5;
-        }
+        Vector2 desiredVelocity = direction * 20;
 
         rb.AddForce(desiredVelocity);
 
@@ -107,6 +95,7 @@ public class UnitClass : DestroyableObject
         {
             rb.velocity = rb.velocity.normalized * maxSpeed;
         }
+        Debug.Log(rb.velocity.magnitude);
 
         if (rb.velocity.x > 0.1)
         {
@@ -118,6 +107,9 @@ public class UnitClass : DestroyableObject
         }
     }
 
+    /*
+     * A function which manages the units movement when idle
+     */
     public void NotMoving()
     {
         Vector2 seperationSteer = worldController.GetSeperation(this) * 0.1f;
@@ -146,6 +138,11 @@ public class UnitClass : DestroyableObject
 
     public virtual void Idle() { }
 
+    /*
+     * A function which returns whether the unit is moving or not
+     * 
+     * Returns bool - true if moving, else false
+     */
     public bool IsMoving()
     {
         return retreating || attacking || defending;
@@ -190,7 +187,7 @@ public class UnitClass : DestroyableObject
                 this.hierarchicalPath.Pop();
             }
         }
-        currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
+        (currentFlowField, intfield) = worldController.GetFlowField(transform.position, new Vector2Int(this.hierarchicalPath.Peek().x, this.hierarchicalPath.Peek().y));
     }
 
     /*
@@ -214,7 +211,7 @@ public class UnitClass : DestroyableObject
                         hierarchicalPath.Pop();
                     }
                     HierarchicalNode n = hierarchicalPath.Peek();
-                    currentFlowField = worldController.GetFlowField(transform.position, new Vector2Int(n.x, n.y));
+                    (currentFlowField, intfield) = worldController.GetFlowField(transform.position, new Vector2Int(n.x, n.y));
                 }
                 //if the unit has been pushed onto an incorrect tile
                 else
@@ -243,7 +240,6 @@ public class UnitClass : DestroyableObject
             //if the unit is on the correct component but is in an inaccessible sector
             if (currentFlowField.GetObject(transform.position) == default(Vector2))
             {
-                //Debug.Log("Inaccessable zone.");
                 //recalculate the path
                 List<HierarchicalNode> currentPath = new List<HierarchicalNode>(hierarchicalPath);
                 currentPath.Reverse();
@@ -263,8 +259,7 @@ public class UnitClass : DestroyableObject
                 }
                 else
                 {
-                    flow.Normalize();
-                    return (flow);
+                    return flow.normalized;
                 }
             }
         }
@@ -358,58 +353,73 @@ public class UnitClass : DestroyableObject
         GUIStyle style = new GUIStyle(GUI.skin.label);
         style.alignment = TextAnchor.MiddleCenter;
         Gizmos.color = Color.yellow;
-
-        if (hierarchicalPath != null)
+        if (showpath)
         {
-            if (hierarchicalPath.Count > 0)
+            if (hierarchicalPath != null)
             {
-                Stack<HierarchicalNode> reverse = new Stack<HierarchicalNode>();
-
-                while (hierarchicalPath.Count > 0)
+                if (hierarchicalPath.Count > 0)
                 {
-                    reverse.Push(hierarchicalPath.Pop());
-                }
+                    Stack<HierarchicalNode> reverse = new Stack<HierarchicalNode>();
 
-                if (reverse.Count > 0)
-                {
-                    Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, worldController.tileSize/4f));
-                    Vector2 temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
-                    Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
-                    Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
-                    while (reverse.Count > 1)
+                    while (hierarchicalPath.Count > 0)
                     {
-                        HierarchicalNode n = reverse.Pop();
-                        temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                        reverse.Push(hierarchicalPath.Pop());
+                    }
+
+                    if (reverse.Count > 0)
+                    {
+                        Gizmos.matrix = Matrix4x4.Translate(new Vector2(0, worldController.tileSize / 4f));
+                        Vector2 temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
                         Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
                         Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
+                        while (reverse.Count > 1)
+                        {
+                            HierarchicalNode n = reverse.Pop();
+                            temp = worldController.costField.GetWorldPositionFromIndex(reverse.Peek().x, reverse.Peek().y);
+                            Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                            Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y + (worldController.tileSize / 4f)));
+                            Gizmos.DrawLine(new Vector2(temp.x - (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
+                            Gizmos.DrawLine(new Vector2(temp.x + (worldController.tileSize / 2f), temp.y), new Vector2(temp.x, temp.y - (worldController.tileSize / 4f)));
 
-                        Vector2 z = worldController.costField.GetWorldPositionFromIndex(n.x, n.y);
-                        Gizmos.DrawLine(z, temp);
+                            Vector2 z = worldController.costField.GetWorldPositionFromIndex(n.x, n.y);
+                            Gizmos.DrawLine(z, temp);
 
-                        hierarchicalPath.Push(n);
+                            hierarchicalPath.Push(n);
+                        }
+                        hierarchicalPath.Push(reverse.Pop());
                     }
-                    hierarchicalPath.Push(reverse.Pop());
-                }
 
-                Vector2 t = worldController.costField.GetWorldPositionFromIndex(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y);
-                Gizmos.DrawLine((Vector2)transform.position, t);
-                Gizmos.matrix = Matrix4x4.Translate(Vector2.zero);
+                    Vector2 t = worldController.costField.GetWorldPositionFromIndex(hierarchicalPath.Peek().x, hierarchicalPath.Peek().y);
+                    Gizmos.DrawLine((Vector2)transform.position, t);
+                    Gizmos.matrix = Matrix4x4.Translate(Vector2.zero);
+                }
             }
         }
         if (currentFlowField != null) 
         {
-            if (floworint)
+            if (showflowfield)
             {
                 for (int x = 0; x < currentFlowField.GetTileWidth(); x++)
                 {
                     for (int y = 0; y < currentFlowField.GetTileHeight(); y++)
                     {
                         //flow
-                        Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
+                        Gizmos.DrawLine(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, 0.25f), currentFlowField.GetWorldPositionFromIndex(x, y) + currentFlowField.GetObject(x, y) / 2 + new Vector2(0, 0.25f));
+                        Gizmos.DrawCube(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, 0.25f), Vector2.one / 7);
+                        //Handles.Label(currentFlowField.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (currentFlowField.GetObject(x, y)).ToString(), style);
+                    }
+                }
+            }
+            else if(showintfield)
+            {
+                for (int x = 0; x < intfield.GetTileWidth(); x++)
+                {
+                    for (int y = 0; y < intfield.GetTileHeight(); y++)
+                    {
+                        //int
+                        Handles.Label(intfield.GetWorldPositionFromIndex(x, y) + new Vector2(0, worldController.tileSize / 4f), (intfield.GetObject(x, y)).ToString(), style);
                     }
                 }
             }

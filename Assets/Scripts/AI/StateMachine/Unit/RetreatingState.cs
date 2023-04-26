@@ -5,7 +5,7 @@ using UnityEngine;
 public class RetreatingState : State
 {
     private AIUnitFSM _stateMachine;
-    public RetreatingState(AIUnitFSM stateMachine) : base("Retreating", stateMachine)
+    public RetreatingState(AIUnitFSM stateMachine) : base(stateMachine)
     {
         _stateMachine = stateMachine;
     }
@@ -16,7 +16,7 @@ public class RetreatingState : State
         (_stateMachine.unit as AIUnit).SetRetreating();
     }
 
-    public override void UpdatePhysics()
+    public override void FixedUpdateActions()
     {
         _stateMachine.unit.Movement();
     }

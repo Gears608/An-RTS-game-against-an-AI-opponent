@@ -13,6 +13,11 @@ public class UnitGroup
         this.destination = destination;
     }
 
+    /*
+     * A function which calcualtes the current strength of the unit group
+     * 
+     * Returns float - the current threat level of the unit group
+     */
     public float GetGroupStrength()
     {
         float strength = 0;
@@ -25,6 +30,11 @@ public class UnitGroup
         return strength;
     }
 
+    /*
+     * A function which removes a given unit from the group
+     * 
+     * UnitClass unit - the unit to remove
+     */
     public void RemoveUnit(UnitClass unit)
     {
         group.Remove(unit);

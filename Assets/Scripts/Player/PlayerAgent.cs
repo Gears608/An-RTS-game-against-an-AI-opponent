@@ -228,6 +228,11 @@ public class PlayerAgent : PlayerClass
 
         if (buildingPrefab != null)
         {
+            if (Input.GetMouseButtonDown(1))
+            {
+                buildingPrefab = null;
+                buildingVisual.SetActive(false);
+            }
             if (Input.GetMouseButtonDown(0) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             {
                 if (worldController.CheckBuildingPlacement(mousePos, buildingPrefab))

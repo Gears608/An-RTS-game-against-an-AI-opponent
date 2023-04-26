@@ -445,9 +445,11 @@ MonoBehaviour:
   retreating: 0
   rb: {fileID: 8884702013839080553}
   spriteRenderer: {fileID: 2144500199879448808}
-  floworint: 0
+  showflowfield: 0
+  showintfield: 0
+  showpath: 0
   destination: {x: 0, y: 0}
-  maxSpeed: 10
+  maxSpeed: 2
   timer: 0
   attackCooldown: 1
   target: {fileID: 0}
@@ -589,5 +591,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a58aa428f795d84b88ebdeb5a04718d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  state: 
   unit: {fileID: 9040746877952488439}

@@ -62,16 +62,16 @@ public class NonPlayerAgent : PlayerClass
         if (!worldController.IsGamePaused())
         {
             //calls tree to handle resource management
-            CurrencySpendTree();
+            CurrencySpend();
             //calls tree to handle unit management
-            UnitManagementTree();
+            UnitManagement();
         }
     }
 
     /*
      * A function which handles the management of the AI's resources
      */
-    private void CurrencySpendTree()
+    private void CurrencySpend()
     {
         ActionType type = GetBestChoice();
         if (type == ActionType.Unit)
@@ -108,7 +108,7 @@ public class NonPlayerAgent : PlayerClass
         //sets the priority for a defensive building
         if (currentTowers < maxTowers)
         {
-            GetInfo(ActionType.Tower).priority = NearbyThreatsCount() + 1;
+            GetInfo(ActionType.Tower).priority = Mathf.Max(NearbyThreatsCount(), 1);
         }
         else
         {
@@ -124,7 +124,7 @@ public class NonPlayerAgent : PlayerClass
             }
             else
             {
-                GetInfo(ActionType.Mine).priority = (1f / prodPerTick * 50f) + 1;
+                GetInfo(ActionType.Mine).priority = Mathf.Max((1f / prodPerTick * 50f), 1);
             }
         }
         else
@@ -432,7 +432,7 @@ public class NonPlayerAgent : PlayerClass
     /*
      * A function which handles actions of units
      */
-    private void UnitManagementTree()
+    private void UnitManagement()
     {
         List<AIUnit> idleUnits = GetCurrentlyIdleUnits();
 

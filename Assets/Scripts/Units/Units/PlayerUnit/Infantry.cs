@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class InfantryClass : UnitClass
+public class Infantry : UnitClass
 {
     [SerializeField]
     private LineRenderer projectileRenderer;

@@ -4,22 +4,20 @@ using UnityEngine;
 
 public class State
 {
-    public string stateName;
     public List<Transition> transitions;
     protected StateMachine stateMachine;
 
-    public State(string stateName, StateMachine stateMachine)
+    public State(StateMachine stateMachine)
     {
-        this.stateName = stateName;
         this.stateMachine = stateMachine;
         transitions = new List<Transition>();
     }
 
     public virtual void EnterState() { }
 
-    public virtual void UpdateLogic() { }
+    public virtual void UpdateActions() { }
 
-    public virtual void UpdatePhysics() { }
+    public virtual void FixedUpdateActions() { }
 
     public virtual void ExitState() { }
 }

@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class StateMachine : MonoBehaviour
 {
-    public string state;
     State currentState;
 
     private void Start()
@@ -35,8 +34,7 @@ public class StateMachine : MonoBehaviour
 
         if(currentState != null)
         {
-            currentState.UpdateLogic();
-            state = currentState.stateName;
+            currentState.UpdateActions();
         }
     }
 
@@ -44,7 +42,7 @@ public class StateMachine : MonoBehaviour
     {
         if(currentState != null)
         {
-            currentState.UpdatePhysics();
+            currentState.FixedUpdateActions();
         }
     }
 
